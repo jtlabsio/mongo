@@ -7,6 +7,7 @@ import (
 )
 
 type QueryBuilder struct {
+	fieldTypes map[string]string
 }
 
 func NewQueryBuilder(schema bson.M) *QueryBuilder {
@@ -25,7 +26,10 @@ func (qb QueryBuilder) discoverFields(schema bson.M) error {
 	if properties, ok := schema["properties"]; ok {
 		properties := properties.(bson.M)
 		for key, value := range properties {
-			fmt.Println(key, value)
+			value := value.(bson.M)
+			if bsonType, ok := value["bsonType"]; ok {
+				fmt.Println(key, bsonType)
+			}
 		}
 	}
 

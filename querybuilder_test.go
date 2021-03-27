@@ -32,11 +32,40 @@ func TestQueryBuilder_discoverFields(t *testing.T) {
 						},
 						"someName": bson.M{
 							"bsonType":    "string",
-							"description": "name of the thing",
+							"description": "string name of the thing",
 						},
 						"disabled": bson.M{
-							"bsonType":    "",
-							"description": "",
+							"bsonType":    "bool",
+							"description": "boolean type",
+						},
+						"customEnum": bson.M{
+							"enum":        bson.A{"A", "B", "C"},
+							"description": "an enum type",
+						},
+						"minMaxNumber": bson.M{
+							"bsonType":    "int",
+							"minimum":     0,
+							"maximum":     100,
+							"description": "number with a min and max",
+						},
+						"childStructure": bson.M{
+							"bsonType": "object",
+							"required": bson.A{},
+							"properties": bson.M{
+								"fieldA": bson.M{
+									"bsonType":    "",
+									"description": "",
+								},
+								"fieldB": bson.M{
+									"bsonType":    "",
+									"description": "",
+								},
+								"fieldC": bson.M{
+									"bsonType":   "object",
+									"required":   bson.A{},
+									"properties": bson.M{},
+								},
+							},
 						},
 					},
 				},
