@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func TestNewQueryBuilder(t *testing.T) {
+func Test_NewQueryBuilder(t *testing.T) {
 	type args struct {
 		schema bson.M
 	}
@@ -49,6 +49,10 @@ func TestNewQueryBuilder(t *testing.T) {
 							"maximum":     100,
 							"description": "number with a min and max",
 						},
+						"childStructureNoSchema": bson.M{
+							"bsonType":    "object",
+							"description": "child structure with no schema",
+						},
 						"childStructure": bson.M{
 							"bsonType": "object",
 							"required": bson.A{},
@@ -86,10 +90,14 @@ func TestNewQueryBuilder(t *testing.T) {
 				"someName":                       "string",
 				"disabled":                       "bool",
 				"minMaxNumber":                   "int",
+				"childStructureNoSchema":         "object",
+				"childStructure":                 "object",
 				"childStructure.fieldB":          "date",
+				"childStructure.fieldC":          "object",
 				"childStructure.fieldC.fieldC-1": "string",
 				"childStructure.fieldC.fieldC-2": "double",
 				"childStructure.fieldA":          "array",
+				"customEnum":                     "object",
 			},
 		},
 	}

@@ -44,17 +44,24 @@ func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M)
 			// retrieve the type of the field
 			if bsonType, ok := value["bsonType"]; ok {
 				bsonType := bsonType.(string)
-				if bsonType != "object" {
+				// capture type in the fieldTypes map
+				if bsonType != "" {
 					qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
-					// fmt.Println(fmt.Sprintf("%s%s", parentPrefix, field), bsonType)
-					continue
 				}
 
+				// handle any sub-document schema details
 				if subProperties, ok := value["properties"]; ok {
 					subProperties := subProperties.(bson.M)
 					qb.iterateProperties(
 						fmt.Sprintf("%s%s.", parentPrefix, field), subProperties)
 				}
+
+				continue
+			}
+
+			// check for enum (without bsonType specified)
+			if _, ok := value["enum"]; ok {
+				qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = "object"
 			}
 		default:
 			// unknown type
