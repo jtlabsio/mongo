@@ -3,23 +3,58 @@ package mongo
 import (
 	"fmt"
 
+	"github.com/brozeph/queryoptions"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type QueryBuilder struct {
-	fieldTypes map[string]string
+	collection       string
+	fieldTypes       map[string]string
+	strictValidation bool
 }
 
-func NewQueryBuilder(schema bson.M) *QueryBuilder {
+func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool) *QueryBuilder {
 	qb := QueryBuilder{
-		fieldTypes: map[string]string{},
+		collection:       collection,
+		fieldTypes:       map[string]string{},
+		strictValidation: false,
 	}
 
+	// parse the schema
 	if schema != nil {
 		qb.discoverFields(schema)
 	}
 
+	// override strict validation if provided
+	if len(strictValidation) > 0 {
+		qb.strictValidation = strictValidation[0]
+	}
+
 	return &qb
+}
+
+func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
+	return nil, nil
+}
+
+func (qb QueryBuilder) FindOptions(qo queryoptions.Options) (*options.FindOptions, error) {
+	opts := options.Find()
+
+	// determine pagination for the options
+	qb.setPaginationOptions(qo.Page, opts)
+
+	// determine projection for the options
+	if err := qb.setProjectionOptions(qo.Fields, opts); err != nil {
+		return nil, err
+	}
+
+	// determine sorting for the options
+	if err := qb.setSortOptions(qo.Sort, opts); err != nil {
+		return nil, err
+	}
+
+	return opts, nil
 }
 
 func (qb QueryBuilder) discoverFields(schema bson.M) {
@@ -68,4 +103,102 @@ func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M)
 			continue
 		}
 	}
+}
+
+func (qb QueryBuilder) setPaginationOptions(pagination map[string]int, opts *options.FindOptions) {
+	// check for limit
+	if limit, ok := pagination["limit"]; ok {
+		opts.SetLimit(int64(limit))
+
+		// check for offset (once limit is set)
+		if offset, ok := pagination["offset"]; ok {
+			opts.SetSkip(int64(offset))
+		}
+
+		// check for skip (once limit is set)
+		if skip, ok := pagination["skip"]; ok {
+			opts.SetSkip(int64(skip))
+		}
+	}
+
+	// check for page and size
+	if size, ok := pagination["size"]; ok {
+		opts.SetLimit(int64(size))
+
+		// set skip (requires understanding of size)
+		if page, ok := pagination["page"]; ok {
+			opts.SetSkip(int64(page * size))
+		}
+	}
+}
+
+func (qb QueryBuilder) setProjectionOptions(fields []string, opts *options.FindOptions) error {
+	// set field projections option
+	if len(fields) > 0 {
+		prj := map[string]int{}
+		for _, field := range fields {
+			val := 1
+
+			// handle when the first char is a - (don't display field in result)
+			if field[0:1] == "-" {
+				field = field[1:]
+				val = 0
+			}
+
+			// handle scenarios where the first char is a + (redundant)
+			if field[0:1] == "+" {
+				field = field[1:]
+			}
+
+			// lookup field in the fieldTypes dictionary if strictValidation is true
+			if qb.strictValidation {
+				if _, ok := qb.fieldTypes[field]; !ok {
+					// we have a problem
+					return fmt.Errorf("field %s does not exist in collection %s", field, qb.collection)
+				}
+			}
+
+			// add the field to the project dictionary
+			prj[field] = val
+		}
+
+		// add the projection to the FindOptions
+		if len(prj) > 0 {
+			opts.SetProjection(prj)
+		}
+	}
+
+	return nil
+}
+
+func (qb QueryBuilder) setSortOptions(fields []string, opts *options.FindOptions) error {
+	if len(fields) > 0 {
+		sort := map[string]int{}
+		for _, field := range fields {
+			val := 1
+
+			if field[0:1] == "-" {
+				field = field[1:]
+				val = -1
+			}
+
+			if field[0:1] == "+" {
+				field = field[1:]
+			}
+
+			// lookup field in the fieldTypes dictionary if strictValidation is true
+			if qb.strictValidation {
+				if _, ok := qb.fieldTypes[field]; !ok {
+					// we have a problem
+					return fmt.Errorf("field %s does not exist in collection %s", field, qb.collection)
+				}
+			}
+
+			sort[field] = val
+		}
+
+		opts.SetSort(sort)
+	}
+
+	return nil
 }

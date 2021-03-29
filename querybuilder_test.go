@@ -9,7 +9,8 @@ import (
 
 func Test_NewQueryBuilder(t *testing.T) {
 	type args struct {
-		schema bson.M
+		collection string
+		schema     bson.M
 	}
 	tests := []struct {
 		name string
@@ -19,6 +20,7 @@ func Test_NewQueryBuilder(t *testing.T) {
 		{
 			name: "test with basic schema",
 			args: args{
+				collection: "test",
 				schema: bson.M{
 					"bsonType": "object",
 					"required": []string{"someID", "created", "someName"},
@@ -103,7 +105,7 @@ func Test_NewQueryBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			qb := NewQueryBuilder(tt.args.schema)
+			qb := NewQueryBuilder(tt.args.collection, tt.args.schema)
 			if !reflect.DeepEqual(qb.fieldTypes, tt.want) {
 				t.Errorf("NewQueryBuilder(), qb.fieldTypes = %v, want %v", qb.fieldTypes, tt.want)
 			}
