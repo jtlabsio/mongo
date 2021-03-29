@@ -35,7 +35,57 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 }
 
 func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
-	return nil, nil
+	filter := bson.D{}
+
+	if len(qo.Filter) > 0 {
+		for field, values := range qo.Filter {
+			var bsonType string
+
+			// lookup the field
+			if bt, ok := qb.fieldTypes[field]; ok {
+				bsonType = bt
+			}
+
+			// check for strict field validation
+			if bsonType == "" && qb.strictValidation {
+				return nil, fmt.Errorf("field %s does not exist in collection %s", field, qb.collection)
+			}
+
+			switch bsonType {
+			// double
+			case "decimal":
+				f := detectNumericComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "double":
+				f := detectNumericComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "int":
+				f := detectNumericComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "long":
+				f := detectNumericComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+				// string
+				// object
+				// array
+				// binData
+				// objectId
+				// bool
+				// date
+				// null
+				// regex
+				// dbPointer
+				// javascript
+				// symbol
+				// javascriptWithScope
+				// timestamp
+				// minKey
+				// maxKey
+			}
+		}
+	}
+
+	return filter, nil
 }
 
 func (qb QueryBuilder) FindOptions(qo queryoptions.Options) (*options.FindOptions, error) {
