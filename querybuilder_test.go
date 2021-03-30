@@ -158,7 +158,20 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name: "test numeric types",
+			name: "should not error without strict validation and mismatched field",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[nofield]=error",
+			},
+			want:    nil,
+			wantErr: false,
+		},
+		{
+			name: "should properly detect and type numeric values",
 			fields: fields{
 				collection: "test",
 				fieldTypes: map[string]string{
@@ -188,6 +201,53 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				primitive.E{
 					Key:   "lVal",
 					Value: int64(9223372036854775807),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle numeric operators (lt, lte, gt, gte)",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"iVal1": "int",
+					"iVal2": "int",
+					"iVal3": "int",
+					"iVal4": "int",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[iVal1]=%3C4&filter[iVal2]=%3C%3D3&filter[iVal3]=%3E1&filter[iVal4]=%3E%3D2",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "iVal1",
+					Value: bson.D{primitive.E{
+						Key:   "$lt",
+						Value: int32(4),
+					}},
+				},
+				primitive.E{
+					Key: "iVal2",
+					Value: bson.D{primitive.E{
+						Key:   "$lte",
+						Value: int32(3),
+					}},
+				},
+				primitive.E{
+					Key: "iVal3",
+					Value: bson.D{primitive.E{
+						Key:   "$gt",
+						Value: int32(1),
+					}},
+				},
+				primitive.E{
+					Key: "iVal4",
+					Value: bson.D{primitive.E{
+						Key:   "$gte",
+						Value: int32(2),
+					}},
 				},
 			},
 			wantErr: false,
@@ -227,7 +287,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			// iterate through the keys of what is wanted to ensure each key value matches
 			for _, e := range tt.want {
 				if val, ok := gotMap[e.Key]; ok {
-					if val.Key != e.Key || val.Value != e.Value {
+					if val.Key != e.Key || !reflect.DeepEqual(val.Value, e.Value) {
 						// values do not match
 						t.Errorf("QueryBuilder.Filter() = %v, want %v", val, e)
 					}

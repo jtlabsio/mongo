@@ -1,7 +1,6 @@
 package mongo
 
 import (
-	"fmt"
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -27,8 +26,6 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		return nil
 	}
 
-	fmt.Printf("Field %s is of %d bitSize\n", field, bitSize)
-
 	filter := bson.D{}
 
 	for _, value := range values {
@@ -38,28 +35,48 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 		var oper string
 
-		// lte
-		if value[0:2] == "<=" {
-			oper = "$lte"
-			value = value[2:]
+		// check if string value is long enough for a 2 char prefix
+		if len(value) >= 3 {
+			var uv string
+
+			// lte
+			if value[0:2] == "<=" {
+				oper = "$lte"
+				uv = value[2:]
+			}
+
+			// gte
+			if value[0:2] == ">=" {
+				oper = "$gte"
+				uv = value[2:]
+			}
+
+			// update value to remove the prefix
+			if uv != "" {
+				value = uv
+			}
 		}
 
-		// gte
-		if value[0:2] == ">=" {
-			oper = "$gte"
-			value = value[2:]
-		}
+		// check if string value is long enough for a single char prefix
+		if len(value) >= 2 {
+			var uv string
 
-		// lt
-		if value[0:1] == "<" {
-			oper = "$lt"
-			value = value[1:]
-		}
+			// lt
+			if value[0:1] == "<" {
+				oper = "$lt"
+				uv = value[1:]
+			}
 
-		// gt
-		if value[0:1] == ">" {
-			oper = "$gt"
-			value = value[1:]
+			// gt
+			if value[0:1] == ">" {
+				oper = "$gt"
+				uv = value[1:]
+			}
+
+			// update value to remove the prefix
+			if uv != "" {
+				value = uv
+			}
 		}
 
 		var parsedValue interface{}
