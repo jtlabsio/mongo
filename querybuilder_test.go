@@ -3,6 +3,7 @@ package mongo
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/brozeph/queryoptions"
 	"go.mongodb.org/mongo-driver/bson"
@@ -252,6 +253,166 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "should properly handle bool types",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"bVal1": "bool",
+					"bVal2": "bool",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[bVal1]=true&filter[bVal2]=false",
+			},
+			want: bson.D{
+				primitive.E{
+					Key:   "bVal1",
+					Value: true,
+				},
+				primitive.E{
+					Key:   "bVal2",
+					Value: false,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle date types",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"dVal1": "date",
+					"dVal2": "date",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[dVal1]=2020-01-01T12:00:00.000Z&filter[dVal2]=2021-02-16T02:04:05.000Z",
+			},
+			want: bson.D{
+				primitive.E{
+					Key:   "dVal1",
+					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				},
+				primitive.E{
+					Key:   "dVal2",
+					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle operators on date types",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"dVal1": "date",
+					"dVal2": "date",
+					"dVal3": "date",
+					"dVal4": "date",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "dVal1",
+					Value: bson.D{primitive.E{
+						Key:   "$lt",
+						Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+					}},
+				},
+				primitive.E{
+					Key: "dVal2",
+					Value: bson.D{primitive.E{
+						Key:   "$lte",
+						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+					}},
+				},
+				primitive.E{
+					Key: "dVal3",
+					Value: bson.D{primitive.E{
+						Key:   "$gt",
+						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+					}},
+				},
+				primitive.E{
+					Key: "dVal4",
+					Value: bson.D{primitive.E{
+						Key:   "$gte",
+						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle string type using $exists operator with object fields",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"oVal":       "object",
+					"oVal.sVal1": "string",
+					"oVal.sVal2": "string",
+					"oVal.sVal3": "string",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[oVal]=sVal1,!sVal2,-sVal3",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "oVal.sVal1",
+					Value: primitive.E{
+						Key:   "$exists",
+						Value: true,
+					},
+				},
+				primitive.E{
+					Key: "oVal.sVal2",
+					Value: primitive.E{
+						Key:   "$exists",
+						Value: false,
+					},
+				},
+				primitive.E{
+					Key: "oVal.sVal3",
+					Value: primitive.E{
+						Key:   "$exists",
+						Value: false,
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle string type using $in operator with array of values",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"sVal1": "string",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[sVal1]=value1,value2,value3",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "sVal1",
+					Value: primitive.E{
+						Key:   "$in",
+						Value: primitive.A{"value1", "value2", "value3"},
+					},
+				},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -296,7 +457,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				}
 
 				// map was missing the key...
-				t.Errorf("QueryBuilder.Filter() = missing field %v in response", e.Key)
+				t.Errorf("QueryBuilder.Filter() = missing field %v in response (%v)", e.Key, got)
 			}
 		})
 	}

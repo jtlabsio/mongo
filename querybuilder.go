@@ -2,18 +2,25 @@ package mongo
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/brozeph/queryoptions"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+// QueryBuilder is a type that makes working with Mongo driver Find methods easier
+// when used in combination with a QueryOptions struct that specifies filters,
+// pagination details, sorting instructions and field projection details.
 type QueryBuilder struct {
 	collection       string
 	fieldTypes       map[string]string
 	strictValidation bool
 }
 
+// NewQueryBuilder returns a new instance of a QueryBuilder object for constructing
+// filters and options suitable for use with Mongo driver Find methods
 func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool) *QueryBuilder {
 	qb := QueryBuilder{
 		collection:       collection,
@@ -34,6 +41,36 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 	return &qb
 }
 
+// Filter builds a suitable bson document to send to any of the find methods
+// exposed by the Mongo driver. This method can validate the provided query
+// options against the schema that was used to build the QueryBuilder instance
+// when the QueryBuilder has strict validation enabled.
+//
+// The supported bson types for filter/search are:
+// * array (strings only)
+// * bool
+// * date
+// * decimal
+// * double
+// * int
+// * long
+// * object (field detection)
+// * string
+// * timestamp
+//
+// The non-supported bson types for filter/search at this time
+// * object (actual object comparison... only fields within the object are supported)
+// * array (non string data)
+// * binData
+// * objectId
+// * null
+// * regex
+// * dbPointer
+// * javascript
+// * symbol
+// * javascriptWithScope
+// * minKey
+// * maxKey
 func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
 	filter := bson.D{}
 
@@ -52,7 +89,21 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
 			}
 
 			switch bsonType {
-			// double
+			case "array":
+				f := detectStringComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "bool":
+				for _, value := range values {
+					bv, _ := strconv.ParseBool(value)
+					f := primitive.E{
+						Key:   field,
+						Value: bv,
+					}
+					filter = append(filter, f)
+				}
+			case "date":
+				f := detectDateComparisonOperator(field, values)
+				filter = combine(filter, f)
 			case "decimal":
 				f := detectNumericComparisonOperator(field, values, bsonType)
 				filter = combine(filter, f)
@@ -65,22 +116,16 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
 			case "long":
 				f := detectNumericComparisonOperator(field, values, bsonType)
 				filter = combine(filter, f)
-				// string
-				// object
-				// array
-				// binData
-				// objectId
-				// bool
-				// date
-				// null
-				// regex
-				// dbPointer
-				// javascript
-				// symbol
-				// javascriptWithScope
-				// timestamp
-				// minKey
-				// maxKey
+			case "object":
+				f := detectStringComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "string":
+				f := detectStringComparisonOperator(field, values, bsonType)
+				filter = combine(filter, f)
+			case "timestamp":
+				// handle just like dates
+				f := detectDateComparisonOperator(field, values)
+				filter = combine(filter, f)
 			}
 		}
 	}
