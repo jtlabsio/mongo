@@ -1,6 +1,7 @@
 package mongo
 
 import (
+	"fmt"
 	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,6 +26,8 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 	default:
 		return nil
 	}
+
+	fmt.Printf("Field %s is of %d bitSize\n", field, bitSize)
 
 	filter := bson.D{}
 
@@ -63,9 +66,19 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		if numericType == "decimal" || numericType == "double" {
 			v, _ := strconv.ParseFloat(value, bitSize)
 			parsedValue = v
+
+			// retype 32 bit
+			if bitSize == 32 {
+				parsedValue = float32(v)
+			}
 		} else {
 			v, _ := strconv.ParseInt(value, 0, bitSize)
 			parsedValue = v
+
+			// retype 32 bit
+			if bitSize == 32 {
+				parsedValue = int32(v)
+			}
 		}
 
 		// check if there is an lt, lte, gt or gte key
@@ -98,9 +111,7 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 }
 
 func combine(a bson.D, b bson.D) bson.D {
-	for _, e := range b {
-		a = append(a, e)
-	}
+	a = append(a, b...)
 
 	return a
 }
