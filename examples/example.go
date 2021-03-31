@@ -1,15 +1,17 @@
-# MongoDB QueryBuilder
-
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/brozeph/mongoquerybuilder) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](http://gocover.io/_badge/github.com/brozeph/mongoquerybuilder)](http://gocover.io/github.com/brozeph/mongoquerybuilder)
-
-
-This library exists to ease the creation of MongoDB filter and FindOptions structs when using the MongoDB driver in combination with a [JSONAPI query parser](https://github.com/brozeph/queryoptions).
-
-## Usage
-
-Example code below translated from [examples/examples.go](examples/examples.go) - for more info, see the example file run running instructions.
-
-```go
+// main package is an example of how to use the querybuilder to
+// construct filters for MongoDB Find operations.
+//
+// To run this example, get a running instance of Docker on 27017
+// `docker run -d --name example-mongo -p 27017:27017 mongo`
+//
+// To start the example server:
+// `go run examples/example.go`
+//
+// To query the newly running example API:
+// `curl http://localhost:3080/v1/things?filter[attributes]=round`
+//
+// For more queryoptions info, see: https://github.com/brozeph/queryoptions
+//
 package main
 
 import (
@@ -45,12 +47,20 @@ var thingsSchema = bson.M{
 				"bsonType":    "string",
 				"description": "name of the thing",
 			},
-			"types": bson.M{
+			"attributes": bson.M{
 				"bsonType":    "array",
 				"description": "type tags for the thing",
 			},
 		},
 	},
+}
+
+// golang type for the things...
+type thing struct {
+	ThingID    string    `bson:"thingID"`
+	Name       string    `bson:"name"`
+	Created    time.Time `bson:"created"`
+	Attributes []string  `bson:"attributes"`
 }
 
 // create a new MongoDB QueryBuilder (with strict validation set to true)
@@ -91,12 +101,7 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 
 	defer cur.Close(context.TODO())
 
-	data := []struct {
-		ThingID string    `bson:"thingID"`
-		Name    string    `bson:"name"`
-		Created time.Time `bson:"created"`
-		Types   []string  `bson:"types"`
-	}{}
+	data := []thing{}
 	if err = cur.All(context.TODO(), &data); err != nil {
 		fmt.Fprint(w, err)
 		return
@@ -120,7 +125,43 @@ func main() {
 
 	// create a collection with the schema
 	colOpts := options.CreateCollection().SetValidator(thingsSchema)
-	mc.Database("things-db").CreateCollection(context.TODO(), "things", colOpts)
+	if err := mc.Database("things-db").CreateCollection(context.TODO(), "things", colOpts); err == nil {
+		// if err is nil, this is the first time the program is running... insert data
+		// I know... kinda whack, but this is just an example
+		data := []interface{}{
+			thing{
+				ThingID:    "123456",
+				Name:       "basketball",
+				Created:    time.Now(),
+				Attributes: []string{"round", "orange", "bouncey"},
+			},
+			thing{
+				ThingID:    "123455",
+				Name:       "computer",
+				Created:    time.Now(),
+				Attributes: []string{"square", "metal", "heavy"},
+			},
+			thing{
+				ThingID:    "123454",
+				Name:       "superball",
+				Created:    time.Now(),
+				Attributes: []string{"round", "bouncey", "small"},
+			},
+			thing{
+				ThingID:    "123453",
+				Name:       "glass",
+				Created:    time.Now(),
+				Attributes: []string{"glass", "container", "transparent"},
+			},
+			thing{
+				ThingID:    "123452",
+				Name:       "can",
+				Created:    time.Now(),
+				Attributes: []string{"metal", "cylinder", "empty"},
+			},
+		}
+		mc.Database("things-db").Collection("things").InsertMany(context.TODO(), data)
+	}
 
 	// set the collection pointer
 	collection = mc.Database("things-db").Collection("things")
@@ -128,11 +169,3 @@ func main() {
 	http.HandleFunc("/v1/things", getThings)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
-```
-
-### QueryBuilder
-
-The `QueryBuilder` object is the
-#### Filter
-
-#### FindOptions

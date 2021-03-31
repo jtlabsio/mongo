@@ -158,6 +158,11 @@ func (qb QueryBuilder) discoverFields(schema bson.M) {
 		qb.fieldTypes = map[string]string{}
 	}
 
+	// check to see if top level is $jsonSchema
+	if js, ok := schema["$jsonSchema"]; ok {
+		schema = js.(bson.M)
+	}
+
 	// bsonType, required, properties at top level
 	// looking for properties field, specifically
 	if properties, ok := schema["properties"]; ok {
