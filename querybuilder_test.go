@@ -207,6 +207,29 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "should properly handle numeric values with $in operator",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"iVal": "int",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[iVal]=1,2,3,4,5",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "iVal",
+					Value: primitive.E{
+						Key:   "$in",
+						Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
 			name: "should properly handle numeric operators (lt, lte, gt, gte, ne)",
 			fields: fields{
 				collection: "test",

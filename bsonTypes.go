@@ -132,111 +132,143 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		return nil
 	}
 
-	filter := bson.D{}
+	// handle when values is an array
+	if len(values) > 1 {
+		a := bson.A{}
 
-	for _, value := range values {
-		clause := primitive.E{
-			Key: field,
-		}
-
-		var oper string
-
-		// check if string value is long enough for a 2 char prefix
-		if len(value) >= 3 {
-			var uv string
-
-			// lte
-			if value[0:2] == "<=" {
-				oper = "$lte"
-				uv = value[2:]
-			}
-
-			// gte
-			if value[0:2] == ">=" {
-				oper = "$gte"
-				uv = value[2:]
-			}
-
-			// ne
-			if value[0:2] == "!=" {
-				oper = "$ne"
-				uv = value[2:]
-			}
-
-			// update value to remove the prefix
-			if uv != "" {
-				value = uv
-			}
-		}
-
-		// check if string value is long enough for a single char prefix
-		if len(value) >= 2 {
-			var uv string
-
-			// lt
-			if value[0:1] == "<" {
-				oper = "$lt"
-				uv = value[1:]
-			}
-
-			// gt
-			if value[0:1] == ">" {
-				oper = "$gt"
-				uv = value[1:]
-			}
-
-			// update value to remove the prefix
-			if uv != "" {
-				value = uv
-			}
-		}
-
-		var parsedValue interface{}
-		if numericType == "decimal" || numericType == "double" {
-			v, _ := strconv.ParseFloat(value, bitSize)
-			parsedValue = v
-
-			// retype 32 bit
-			if bitSize == 32 {
-				parsedValue = float32(v)
-			}
-		} else {
-			v, _ := strconv.ParseInt(value, 0, bitSize)
-			parsedValue = v
-
-			// retype 32 bit
-			if bitSize == 32 {
-				parsedValue = int32(v)
-			}
-		}
-
-		// check if there is an lt, lte, gt or gte key
-		if oper != "" {
+		for _, value := range values {
+			var pv interface{}
 			if numericType == "decimal" || numericType == "double" {
-				clause.Value = bson.D{primitive.E{
-					Key:   oper,
-					Value: parsedValue,
-				}}
+				v, _ := strconv.ParseFloat(value, bitSize)
+				pv = v
+
+				// retype 32 bit
+				if bitSize == 32 {
+					pv = float32(v)
+				}
 			} else {
-				clause.Value = bson.D{primitive.E{
-					Key:   oper,
-					Value: parsedValue,
-				}}
+				v, _ := strconv.ParseInt(value, 0, bitSize)
+				pv = v
+
+				// retype 32 bit
+				if bitSize == 32 {
+					pv = int32(v)
+				}
 			}
 
-			// add to the clauses slice
-			filter = append(filter, clause)
-			continue
+			a = append(a, pv)
 		}
 
-		// no operator... just the value
-		clause.Value = parsedValue
+		// create a filter with the array of values...
+		filter := bson.D{primitive.E{
+			Key: field,
+			Value: primitive.E{
+				Key:   "$in",
+				Value: a,
+			},
+		}}
 
-		// add to the clauses slice
-		filter = append(filter, clause)
+		// return
+		return filter
 	}
 
-	return filter
+	var oper string
+	value := values[0]
+	clause := primitive.E{
+		Key: field,
+	}
+
+	// check if string value is long enough for a 2 char prefix
+	if len(value) >= 3 {
+		var uv string
+
+		// lte
+		if value[0:2] == "<=" {
+			oper = "$lte"
+			uv = value[2:]
+		}
+
+		// gte
+		if value[0:2] == ">=" {
+			oper = "$gte"
+			uv = value[2:]
+		}
+
+		// ne
+		if value[0:2] == "!=" {
+			oper = "$ne"
+			uv = value[2:]
+		}
+
+		// update value to remove the prefix
+		if uv != "" {
+			value = uv
+		}
+	}
+
+	// check if string value is long enough for a single char prefix
+	if len(value) >= 2 {
+		var uv string
+
+		// lt
+		if value[0:1] == "<" {
+			oper = "$lt"
+			uv = value[1:]
+		}
+
+		// gt
+		if value[0:1] == ">" {
+			oper = "$gt"
+			uv = value[1:]
+		}
+
+		// update value to remove the prefix
+		if uv != "" {
+			value = uv
+		}
+	}
+
+	// parse the numeric value appropriately
+	var parsedValue interface{}
+	if numericType == "decimal" || numericType == "double" {
+		v, _ := strconv.ParseFloat(value, bitSize)
+		parsedValue = v
+
+		// retype 32 bit
+		if bitSize == 32 {
+			parsedValue = float32(v)
+		}
+	} else {
+		v, _ := strconv.ParseInt(value, 0, bitSize)
+		parsedValue = v
+
+		// retype 32 bit
+		if bitSize == 32 {
+			parsedValue = int32(v)
+		}
+	}
+
+	// check if there is an lt, lte, gt or gte key
+	if oper != "" {
+		if numericType == "decimal" || numericType == "double" {
+			clause.Value = bson.D{primitive.E{
+				Key:   oper,
+				Value: parsedValue,
+			}}
+		} else {
+			clause.Value = bson.D{primitive.E{
+				Key:   oper,
+				Value: parsedValue,
+			}}
+		}
+
+		// return with the specified operator
+		return bson.D{clause}
+	}
+
+	// no operator... just the value
+	clause.Value = parsedValue
+	return bson.D{clause}
 }
 
 func detectStringComparisonOperator(field string, values []string, bsonType string) bson.D {
@@ -373,6 +405,5 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 func combine(a bson.D, b bson.D) bson.D {
 	a = append(a, b...)
-
 	return a
 }
