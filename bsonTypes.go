@@ -17,76 +17,100 @@ func detectDateComparisonOperator(field string, values []string) bson.D {
 		return nil
 	}
 
-	filter := bson.D{}
+	// if values is greater than 0, use an $in clause
+	if len(values) > 1 {
+		a := bson.A{}
 
-	for _, value := range values {
-		var oper string
-
-		// check if string value is long enough for a 2 char prefix
-		if len(value) >= 3 {
-			var uv string
-
-			// lte
-			if value[0:2] == "<=" {
-				oper = "$lte"
-				uv = value[2:]
-			}
-
-			// gte
-			if value[0:2] == ">=" {
-				oper = "$gte"
-				uv = value[2:]
-			}
-
-			// update value to remove the prefix
-			if uv != "" {
-				value = uv
-			}
+		// add each string value to the bson.A
+		for _, v := range values {
+			dv, _ := time.Parse(time.RFC3339, v)
+			a = append(a, dv)
 		}
 
-		// check if string value is long enough for a single char prefix
-		if len(value) >= 2 {
-			var uv string
-
-			// lt
-			if value[0:1] == "<" {
-				oper = "$lt"
-				uv = value[1:]
-			}
-
-			// gt
-			if value[0:1] == ">" {
-				oper = "$gt"
-				uv = value[1:]
-			}
-
-			// update value to remove the prefix
-			if uv != "" {
-				value = uv
-			}
-		}
-
-		// parse the date value
-		dv, _ := time.Parse(time.RFC3339, value)
-		f := primitive.E{
+		// create a filter with the array of values...
+		filter := bson.D{primitive.E{
 			Key: field,
-		}
+			Value: primitive.E{
+				Key:   "$in",
+				Value: a,
+			},
+		}}
 
-		// check if there is an lt, lte, gt or gte key
-		if oper != "" {
-			f.Value = bson.D{primitive.E{
-				Key:   oper,
-				Value: dv,
-			}}
-		} else {
-			f.Value = dv
-		}
-
-		// add to the filter
-		filter = append(filter, f)
+		// return
+		return filter
 	}
 
-	return filter
+	value := values[0]
+	var oper string
+
+	// check if string value is long enough for a 2 char prefix
+	if len(value) >= 3 {
+		var uv string
+
+		// lte
+		if value[0:2] == "<=" {
+			oper = "$lte"
+			uv = value[2:]
+		}
+
+		// gte
+		if value[0:2] == ">=" {
+			oper = "$gte"
+			uv = value[2:]
+		}
+
+		// ne
+		if value[0:2] == "!=" {
+			oper = "$ne"
+			uv = value[2:]
+		}
+
+		// update value to remove the prefix
+		if uv != "" {
+			value = uv
+		}
+	}
+
+	// check if string value is long enough for a single char prefix
+	if len(value) >= 2 {
+		var uv string
+
+		// lt
+		if value[0:1] == "<" {
+			oper = "$lt"
+			uv = value[1:]
+		}
+
+		// gt
+		if value[0:1] == ">" {
+			oper = "$gt"
+			uv = value[1:]
+		}
+
+		// update value to remove the prefix
+		if uv != "" {
+			value = uv
+		}
+	}
+
+	// parse the date value
+	dv, _ := time.Parse(time.RFC3339, value)
+	f := primitive.E{
+		Key: field,
+	}
+
+	// check if there is an lt, lte, gt or gte key
+	if oper != "" {
+		f.Value = bson.D{primitive.E{
+			Key:   oper,
+			Value: dv,
+		}}
+	} else {
+		f.Value = dv
+	}
+
+	// return the filter
+	return bson.D{f}
 }
 
 func detectNumericComparisonOperator(field string, values []string, numericType string) bson.D {
@@ -130,6 +154,12 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 			// gte
 			if value[0:2] == ">=" {
 				oper = "$gte"
+				uv = value[2:]
+			}
+
+			// ne
+			if value[0:2] == "!=" {
+				oper = "$ne"
 				uv = value[2:]
 			}
 
@@ -221,9 +251,17 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		for _, fn := range values {
 			// check for "-" prefix on field name
 			exists := true
-			if len(fn) >= 2 && (fn[0:1] == "-" || fn[0:1] == "!") {
+			if len(fn) >= 2 && fn[0:1] == "-" {
 				exists = false
 				fn = fn[1:]
+			}
+
+			// check for "!=" prefix on field name
+			// NOTE: this is a bit of an odd syntax, but support was simple
+			// to build in
+			if exists && len(fn) >= 3 && fn[0:2] == "!=" {
+				exists = false
+				fn = fn[2:]
 			}
 
 			fn = fmt.Sprintf("%s.%s", field, fn)

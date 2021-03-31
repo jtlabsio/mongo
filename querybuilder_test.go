@@ -207,7 +207,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "should properly handle numeric operators (lt, lte, gt, gte)",
+			name: "should properly handle numeric operators (lt, lte, gt, gte, ne)",
 			fields: fields{
 				collection: "test",
 				fieldTypes: map[string]string{
@@ -215,11 +215,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"iVal2": "int",
 					"iVal3": "int",
 					"iVal4": "int",
+					"iVal5": "int",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[iVal1]=%3C4&filter[iVal2]=%3C%3D3&filter[iVal3]=%3E1&filter[iVal4]=%3E%3D2",
+				qs: "filter[iVal1]=%3C4&filter[iVal2]=%3C%3D3&filter[iVal3]=%3E1&filter[iVal4]=%3E%3D2&filter[iVal5]=%21%3D5",
 			},
 			want: bson.D{
 				primitive.E{
@@ -248,6 +249,13 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Value: bson.D{primitive.E{
 						Key:   "$gte",
 						Value: int32(2),
+					}},
+				},
+				primitive.E{
+					Key: "iVal5",
+					Value: bson.D{primitive.E{
+						Key:   "$ne",
+						Value: int32(5),
 					}},
 				},
 			},
@@ -285,11 +293,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				fieldTypes: map[string]string{
 					"dVal1": "date",
 					"dVal2": "date",
+					"dVal3": "date",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[dVal1]=2020-01-01T12:00:00.000Z&filter[dVal2]=2021-02-16T02:04:05.000Z",
+				qs: "filter[dVal1]=2020-01-01T12:00:00.000Z&filter[dVal2]=2021-02-16T02:04:05.000Z&filter[dVal3]=2021-02-16T02:04:05.000Z,2020-01-01T12:00:00.000Z",
 			},
 			want: bson.D{
 				primitive.E{
@@ -299,6 +308,13 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				primitive.E{
 					Key:   "dVal2",
 					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				},
+				primitive.E{
+					Key: "dVal3",
+					Value: primitive.E{
+						Key:   "$in",
+						Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
+					},
 				},
 			},
 			wantErr: false,
@@ -363,7 +379,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[oVal]=sVal1,!sVal2,-sVal3",
+				qs: "filter[oVal]=sVal1,!=sVal2,-sVal3",
 			},
 			want: bson.D{
 				primitive.E{
