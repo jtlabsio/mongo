@@ -1,4 +1,4 @@
-module github.com/brozeph/queryoptions-mongo
+module github.com/brozeph/mongoquerybuilder
 
 go 1.16
 

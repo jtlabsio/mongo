@@ -1,4 +1,4 @@
-package mongo
+package querybuilder
 
 import (
 	"reflect"
@@ -498,11 +498,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"sVal3": "string",
 					"sVal4": "string",
 					"sVal5": "string",
+					"sVal6": "string",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value",
+				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value&filter[sVal6]=\"value\"",
 			},
 			want: bson.D{
 				primitive.E{
@@ -535,6 +536,13 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Value: primitive.E{
 						Key:   "$ne",
 						Value: "value",
+					},
+				},
+				primitive.E{
+					Key: "sVal6",
+					Value: primitive.Regex{
+						Pattern: "^value$",
+						Options: "",
 					},
 				},
 			},

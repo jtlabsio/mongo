@@ -1,4 +1,4 @@
-package mongo
+package querybuilder
 
 import (
 	"fmt"
@@ -346,6 +346,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 	bw := false
 	c := false
+	em := false
 	ew := false
 	ne := false
 
@@ -355,6 +356,8 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		ew = value[0:1] == "*"
 		c = bw && ew
 		ne = value[0:2] == "!="
+		em = value[0:1] == "\"" &&
+			value[len(value)-1:] == "\""
 	}
 
 	// not equal...
@@ -397,6 +400,17 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			Value: primitive.Regex{
 				Pattern: fmt.Sprintf("%s$", value[1:]),
 				Options: "i",
+			},
+		}}
+	}
+
+	// exact match...
+	if em {
+		return bson.D{primitive.E{
+			Key: field,
+			Value: primitive.Regex{
+				Pattern: fmt.Sprintf("^%s$", value[1:len(value)-1]),
+				Options: "",
 			},
 		}}
 	}
