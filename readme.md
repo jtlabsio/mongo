@@ -181,13 +181,24 @@ func getAllThings(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-##### Filtering
+##### Filter
 
 The `QueryOptions` (<https://github.com/brozeph/queryoptions>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
 
-###### Operators
+```go
+// a query filter in a bson.D based on QueryOptions Filter values
+f, err := builder.Filter(opt)
+if err != nil {
+  // this only occurs when strict schema validation is true
+  // and a field is named in the querystring that doesn't actually
+  // exist as defined in the schema... this is NOT the default
+  // behavior
+}
+```
 
-(__note:__ to illustrate the concept for example purposes, the querystring samples shown below are not URL encoded, but should be under normal circumstances).
+###### Query Operators
+
+*__note:__ to illustrate the concept for example purposes, the querystring samples shown below are not URL encoded, but should be under normal circumstances...*
 
 *string bsonType*
 
@@ -205,9 +216,9 @@ For `string` bsonType fields in the schema, the following operators can be lever
 For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `double`), any values provided in the querystring that are parsed by `QueryOptions` are coerced to the appropriate type when constructing the filter. Additionally, the following operators can be used in combination with querystring hints:
 
 * `less than` (i.e. `{ "age": { "$lt": 5 } }`): `?filter[age]=<5`
-* `less than equal to` (i.e. `{ "age": { "$lte": 5 } }`): `?filter[age]=<=5`
+* `less than equal` (i.e. `{ "age": { "$lte": 5 } }`): `?filter[age]=<=5`
 * `greater than` (i.e. `{ "age": { "$gt": 5 } }`): `?filter[age]=>5`
-* `greater than equal to` (i.e. `{ "age": { "$gte": 5 } }`): `?filter[age]=>=5`
+* `greater than equal` (i.e. `{ "age": { "$gte": 5 } }`): `?filter[age]=>=5`
 * `not equals` (i.e. `{ "age": { "$ne": 5 } }`): `?filter[age]=!=5`
 * `in` (i.e. `{ "age": { "$in": [1,2,3,4,5] } }`): `?filter[age]=1,2,3,4,5`
 * standard comparison (i.e. `{ "age": 5 }`): `?filter[age]=5`
@@ -217,11 +228,43 @@ For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `doub
 For `date` bsonType fields in the schema (`date` and `timestamp`), any values in the querystring are converted according to `RFC3339` and used in the filter. The following operators can be used in combination with querystring hints:
 
 * `less than` (i.e. `{ "someDate": { "$lt": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=<2021-02-16T02:04:05.000Z`
-* `less than equal to` (i.e. `{ "someDate": { "$lte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=<=2021-02-16T02:04:05.000Z`
+* `less than equal` (i.e. `{ "someDate": { "$lte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=<=2021-02-16T02:04:05.000Z`
 * `greater than` (i.e. `{ "someDate": { "$gt": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=>2021-02-16T02:04:05.000Z`
-* `greater than equal to` (i.e. `{ "someDate": { "$gte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=>=2021-02-16T02:04:05.000Z`
+* `greater than equal` (i.e. `{ "someDate": { "$gte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=>=2021-02-16T02:04:05.000Z`
 * `not equals` (i.e. `{ "someDate": { "$ne": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=!=2021-02-16T02:04:05.000Z`
 * `in` (i.e. `{ "someDate": { "$in": [ ... ] } }`): `?filter[someDate]=2021-02-16T00:00:00.000Z,2021-02-15T00:00:00.000Z`
 * standard comparison (i.e. `{ "someDate": new Date("2021-02-16T02:04:05.000Z") }`): `?filter[someDate]=2021-02-16T02:04:05.000Z`
 
 #### FindOptions
+
+Pagination, sorting and field projection are defined in options that are provided via `QueryOptions` can be extracted in used in MongoDB Find calls using the `FindOptions` method:
+
+```go
+fo, err := builder.FindOptions(opt)
+if err != nil {
+  // this only occurs when strict schema validation is true
+  // and a field is named in the querystring that doesn't actually
+  // exist as defined in the schema... this is NOT the default
+  // behavior
+}
+```
+
+##### Projection
+
+Projection is supported by specifying fields via the `fields` querystring parameter. By default, no projection is specified and all fields are returned. A `-` prefix can be used before a field name to exclude it from the results.
+
+* `?fields=name,age,-someDate`: includes the fields `name`, `age`, but not `someDate`
+* `?fields=-_id,someID,name`: excludes `_id`, but includes `name` and `someID`
+
+##### Pagination
+
+The `QueryBuilder` attempts to determine if `page` and `size` or `offset` and `limit` is used as a pagination strategy based on the `QueryOptions` values.
+
+* `?page[limit]=100&page[offset]=0`: sets `skip` to 0 and `limit` to 100
+* `?page[size]=100&page[page]=1`: sets `skip` to 100 and `limit` to 100
+
+##### Sort
+
+Sort is supported by specifying fields in the `sort` querystring parameter.
+
+* `?sort=-someDate,name`: sorts descending by `someDate` and ascending by `name`
