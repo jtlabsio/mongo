@@ -132,7 +132,74 @@ func main() {
 
 ### QueryBuilder
 
-The `QueryBuilder` object is the
+A `QueryBuilder` struct can be created per MongoDB collection and will look to a [JSONSchema](https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/) defined (and often used as a validator) for the MongoDB collection to build queries and propery coerce types for parameters that are provided in a [JSON API Query Options](https://github.com/brozeph/queryoptions) object as filters.
+
+#### NewQueryBuilder
+
+New `QueryBuilder` instances can be created using the `NewQueryBuilder` function:
+
+```go
+jsonSchema := bson.D{ /* a JSON schema here... */ }
+qb := querybuilder.NewQueryBuilder("collectionName", jsonSchema)
+```
+
+By default, the `QueryBuilder` does not perform strict schema validation when constructing filter instances and options for Find queries. Strict schema validation can be enabled which will result in an `error` when trying to build a filter referencing any fields that do not exist within the provided schema or when trying to sort or project based on fields that do not exist in the schema.
+
+```go
+// With strict validation enabled
+jsonSchema := bson.D{ /* a JSON schema here... */ }
+qb := querybuilder.NewQueryBuilder("collectionName", jsonSchema, true)
+```
+
 #### Filter
+
+The filter method returns a `bson.D{}` that can be used for excuting Find operations in Mongo.
+
+```go
+func getAllThings(w http.ResponseWriter, r *http.Request) {
+  // hydrate a QueryOptions index from the request
+  opt, err := queryoptions.FromQuerystring(r.URL.RawQuery)
+	if err != nil {
+		fmt.Fprint(w, err)
+		return
+	}
+
+  // a query filter in a bson.D based on QueryOptions filters
+	f, _ := builder.Filter(opt)
+
+	// options (pagination, sorting, field projection) based on QueryOptions
+	fo, _ := builder.FindOptions(opt)
+
+  // now use the filter and options in a Find call to the Mongo collection
+	cur, err := collection.Find(context.TODO(), f, fo)
+	if err != nil {
+		fmt.Fprint(w, err)
+		return
+	}
+
+  /* do cool stuff with the cursor... */
+}
+```
+
+##### Filtering
+
+The `QueryOptions` (<https://github.com/brozeph/queryoptions>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
+
+###### Operators
+
+For `string` bsonType fields in the schema, the following operators can be leveraged with specific querystring hints:
+
+* `begins with` (i.e. `{ "name": { "regex": /^term/, "options": "i" } }`): `?filter[name]=term*`
+* `ends with` (i.e. `{ "name": { "regex": /term$/, "options": "i" } }`): `?ilter[name]=*term`
+* `exact match` (i.e. `{ "name": { "regex": /^term$/ } }`): `?filter[name]="term"`
+* `not equal` (i.e. `{ "name": { "$ne": "term" } }`): `?filter[name]=!=term`
+* `in` (i.e. `{ "name": { "$in": [ ... ] } }`): `?filter[name]=term1,term2,term3,term4`
+* standard comparison (i.e. `{ "name": "term" }`): `?filter[name]=term`
+
+For `numeric` bsonType fields in the schema, the following operators can be used in combination with querystring hints:
+
+
+
+(__note:__ to illustrate the concept for example purposes, the above querystring samples are not URL encoded, but should be under normal circumstances)
 
 #### FindOptions
