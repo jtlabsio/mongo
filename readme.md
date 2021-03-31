@@ -187,6 +187,10 @@ The `QueryOptions` (<https://github.com/brozeph/queryoptions>) package is great 
 
 ###### Operators
 
+(__note:__ to illustrate the concept for example purposes, the querystring samples shown below are not URL encoded, but should be under normal circumstances).
+
+*string bsonType*
+
 For `string` bsonType fields in the schema, the following operators can be leveraged with specific querystring hints:
 
 * `begins with` (i.e. `{ "name": { "regex": /^term/, "options": "i" } }`): `?filter[name]=term*`
@@ -196,10 +200,28 @@ For `string` bsonType fields in the schema, the following operators can be lever
 * `in` (i.e. `{ "name": { "$in": [ ... ] } }`): `?filter[name]=term1,term2,term3,term4`
 * standard comparison (i.e. `{ "name": "term" }`): `?filter[name]=term`
 
-For `numeric` bsonType fields in the schema, the following operators can be used in combination with querystring hints:
+*numeric bsonType*
 
+For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `double`), any values provided in the querystring that are parsed by `QueryOptions` are coerced to the appropriate type when constructing the filter. Additionally, the following operators can be used in combination with querystring hints:
 
+* `less than` (i.e. `{ "age": { "$lt": 5 } }`): `?filter[age]=<5`
+* `less than equal to` (i.e. `{ "age": { "$lte": 5 } }`): `?filter[age]=<=5`
+* `greater than` (i.e. `{ "age": { "$gt": 5 } }`): `?filter[age]=>5`
+* `greater than equal to` (i.e. `{ "age": { "$gte": 5 } }`): `?filter[age]=>=5`
+* `not equals` (i.e. `{ "age": { "$ne": 5 } }`): `?filter[age]=!=5`
+* `in` (i.e. `{ "age": { "$in": [1,2,3,4,5] } }`): `?filter[age]=1,2,3,4,5,2021-02-15T00:00:00.000Z`
+* standard comparison (i.e. `{ "age": 5 }`): `?filter[age]=5`
 
-(__note:__ to illustrate the concept for example purposes, the above querystring samples are not URL encoded, but should be under normal circumstances)
+*date bsonType*
+
+For `date` bsonType fields in the schema (`date` and `timestamp`), any values in the querystring are converted according to `RFC3339` and used in the filter. The following operators can be used in combination with querystring hints:
+
+* `less than` (i.e. `{ "someDate": { "$lt": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=<2021-02-16T02:04:05.000Z`
+* `less than equal to` (i.e. `{ "someDate": { "$lte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=<=2021-02-16T02:04:05.000Z`
+* `greater than` (i.e. `{ "someDate": { "$gt": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=>2021-02-16T02:04:05.000Z`
+* `greater than equal to` (i.e. `{ "someDate": { "$gte": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=>=2021-02-16T02:04:05.000Z`
+* `not equals` (i.e. `{ "someDate": { "$ne": new Date("2021-02-16T02:04:05.000Z") } }`): `?filter[someDate]=!=2021-02-16T02:04:05.000Z`
+* `in` (i.e. `{ "someDate": { "$in": [ ... ] } }`): `?filter[someDate]=2021-02-16T00:00:00.000Z,2021-02-15T00:00:00.000Z`
+* standard comparison (i.e. `{ "someDate": new Date("2021-02-16T02:04:05.000Z") }`): `?filter[someDate]=2021-02-16T02:04:05.000Z`
 
 #### FindOptions
