@@ -318,17 +318,22 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			a = append(a, v)
 		}
 
-		// create a filter with the array of values...
-		filter := bson.D{primitive.E{
+		// when type is an array, don't use $in operator
+		if bsonType == "array" {
+			return bson.D{primitive.E{
+				Key:   field,
+				Value: a,
+			}}
+		}
+
+		// create a filter with the array of values using an $in operator for strings...
+		return bson.D{primitive.E{
 			Key: field,
 			Value: primitive.E{
 				Key:   "$in",
 				Value: a,
 			},
 		}}
-
-		// return
-		return filter
 	}
 
 	// single value
@@ -349,16 +354,16 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		bw = value[len(value)-1:] == "*"
 		ew = value[0:1] == "*"
 		c = bw && ew
-		ne = value[0:1] == "!"
+		ne = value[0:2] == "!="
 	}
 
-	// not exists...
+	// not equal...
 	if ne {
 		return bson.D{primitive.E{
 			Key: field,
 			Value: primitive.E{
 				Key:   "$ne",
-				Value: value[1:],
+				Value: value[2:],
 			},
 		}}
 	}

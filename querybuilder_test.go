@@ -211,19 +211,27 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			fields: fields{
 				collection: "test",
 				fieldTypes: map[string]string{
-					"iVal": "int",
+					"iVal1": "int",
+					"iVal2": "decimal",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[iVal]=1,2,3,4,5",
+				qs: "filter[iVal1]=1,2,3,4,5&filter[iVal2]=1.1,2.2,3.3",
 			},
 			want: bson.D{
 				primitive.E{
-					Key: "iVal",
+					Key: "iVal1",
 					Value: primitive.E{
 						Key:   "$in",
 						Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
+					},
+				},
+				primitive.E{
+					Key: "iVal2",
+					Value: primitive.E{
+						Key:   "$in",
+						Value: primitive.A{float32(1.1), float32(2.2), float32(3.3)},
 					},
 				},
 			},
@@ -351,11 +359,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"dVal2": "date",
 					"dVal3": "date",
 					"dVal4": "date",
+					"dVal5": "date",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z",
+				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z",
 			},
 			want: bson.D{
 				primitive.E{
@@ -384,6 +393,13 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Value: bson.D{primitive.E{
 						Key:   "$gte",
 						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+					}},
+				},
+				primitive.E{
+					Key: "dVal5",
+					Value: bson.D{primitive.E{
+						Key:   "$ne",
+						Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 					}},
 				},
 			},
@@ -447,6 +463,78 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Value: primitive.E{
 						Key:   "$in",
 						Value: primitive.A{"value1", "value2", "value3"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle array type and not use $in operator with array of values",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"aVal1": "array",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[aVal1]=value1,value2,value3",
+			},
+			want: bson.D{
+				primitive.E{
+					Key:   "aVal1",
+					Value: primitive.A{"value1", "value2", "value3"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle string wildcards with regexes",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"sVal1": "string",
+					"sVal2": "string",
+					"sVal3": "string",
+					"sVal4": "string",
+					"sVal5": "string",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value",
+			},
+			want: bson.D{
+				primitive.E{
+					Key: "sVal1",
+					Value: primitive.Regex{
+						Pattern: "value$",
+						Options: "i",
+					},
+				},
+				primitive.E{
+					Key: "sVal2",
+					Value: primitive.Regex{
+						Pattern: "^value",
+						Options: "i",
+					},
+				},
+				primitive.E{
+					Key: "sVal3",
+					Value: primitive.Regex{
+						Pattern: "value",
+						Options: "i",
+					},
+				},
+				primitive.E{
+					Key:   "sVal4",
+					Value: "value",
+				},
+				primitive.E{
+					Key: "sVal5",
+					Value: primitive.E{
+						Key:   "$ne",
+						Value: "value",
 					},
 				},
 			},
