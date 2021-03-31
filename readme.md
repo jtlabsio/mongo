@@ -209,7 +209,7 @@ For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `doub
 * `greater than` (i.e. `{ "age": { "$gt": 5 } }`): `?filter[age]=>5`
 * `greater than equal to` (i.e. `{ "age": { "$gte": 5 } }`): `?filter[age]=>=5`
 * `not equals` (i.e. `{ "age": { "$ne": 5 } }`): `?filter[age]=!=5`
-* `in` (i.e. `{ "age": { "$in": [1,2,3,4,5] } }`): `?filter[age]=1,2,3,4,5,2021-02-15T00:00:00.000Z`
+* `in` (i.e. `{ "age": { "$in": [1,2,3,4,5] } }`): `?filter[age]=1,2,3,4,5`
 * standard comparison (i.e. `{ "age": 5 }`): `?filter[age]=5`
 
 *date bsonType*
