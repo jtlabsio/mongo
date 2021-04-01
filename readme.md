@@ -66,7 +66,7 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// build a bson.D filter for the Find based on queryoptions filters
+	// build a bson.M filter for the Find based on queryoptions filters
 	filter, err := builder.Filter(opt)
 	if err != nil {
 		// NOTE: will only error when strictValidation is true
@@ -164,7 +164,7 @@ func getAllThings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-  // a query filter in a bson.D based on QueryOptions filters
+  // a query filter in a bson.M based on QueryOptions filters
 	f, _ := builder.Filter(opt)
 
 	// options (pagination, sorting, field projection) based on QueryOptions
@@ -186,7 +186,7 @@ func getAllThings(w http.ResponseWriter, r *http.Request) {
 The `QueryOptions` (<https://github.com/brozeph/queryoptions>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
 
 ```go
-// a query filter in a bson.D based on QueryOptions Filter values
+// a query filter in a bson.M based on QueryOptions Filter values
 f, err := builder.Filter(opt)
 if err != nil {
   // this only occurs when strict schema validation is true

@@ -76,7 +76,7 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// build a bson.D filter for the Find based on queryoptions filters
+	// build a bson.M filter for the Find based on queryoptions filters
 	filter, err := builder.Filter(opt)
 	if err != nil {
 		// NOTE: will only error when strictValidation is true
