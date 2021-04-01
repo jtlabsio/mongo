@@ -332,10 +332,14 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	ne := false
 
 	// check for prefix/suffix on the value string
-	if len(value) > 2 {
+	if len(value) > 1 {
 		bw = value[len(value)-1:] == "*"
 		ew = value[0:1] == "*"
 		c = bw && ew
+	}
+
+	// check for != or string in quotes
+	if len(value) > 2 {
 		ne = value[0:2] == "!="
 		em = value[0:1] == "\"" &&
 			value[len(value)-1:] == "\""
