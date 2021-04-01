@@ -29,10 +29,10 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 
 		// create a filter with the array of values...
 		filter := bson.M{
-			field: primitive.E{
+			field: bson.D{primitive.E{
 				Key:   "$in",
 				Value: a,
-			},
+			}},
 		}
 
 		// return
@@ -158,10 +158,10 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 		// return a filter with the array of values...
 		return bson.M{
-			field: primitive.E{
+			field: bson.D{primitive.E{
 				Key:   "$in",
 				Value: a,
-			},
+			}},
 		}
 	}
 
@@ -287,10 +287,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			}
 
 			fn = fmt.Sprintf("%s.%s", field, fn)
-			filter[fn] = primitive.E{
+			filter[fn] = bson.D{primitive.E{
 				Key:   "$exists",
 				Value: exists,
-			}
+			}}
 		}
 
 		return filter
@@ -311,10 +311,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		}
 
 		// create a filter with the array of values using an $in operator for strings...
-		return bson.M{field: primitive.E{
+		return bson.M{field: bson.D{primitive.E{
 			Key:   "$in",
 			Value: a,
-		}}
+		}}}
 	}
 
 	// single value
@@ -343,10 +343,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 	// not equal...
 	if ne {
-		return bson.M{field: primitive.E{
+		return bson.M{field: bson.D{primitive.E{
 			Key:   "$ne",
 			Value: value[2:],
-		}}
+		}}}
 	}
 
 	// contains...

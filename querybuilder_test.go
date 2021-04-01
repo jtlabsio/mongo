@@ -208,14 +208,14 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[iVal1]=1,2,3,4,5&filter[iVal2]=1.1,2.2,3.3",
 			},
 			want: bson.M{
-				"iVal1": primitive.E{
+				"iVal1": bson.D{primitive.E{
 					Key:   "$in",
 					Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
-				},
-				"iVal2": primitive.E{
+				}},
+				"iVal2": bson.D{primitive.E{
 					Key:   "$in",
 					Value: primitive.A{float32(1.1), float32(2.2), float32(3.3)},
-				},
+				}},
 			},
 			wantErr: false,
 		},
@@ -295,10 +295,10 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			want: bson.M{
 				"dVal1": time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				"dVal2": time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-				"dVal3": primitive.E{
+				"dVal3": bson.D{primitive.E{
 					Key:   "$in",
 					Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
-				},
+				}},
 			},
 			wantErr: false,
 		},
@@ -358,18 +358,18 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[oVal]=sVal1,!=sVal2,-sVal3",
 			},
 			want: bson.M{
-				"oVal.sVal1": primitive.E{
+				"oVal.sVal1": bson.D{primitive.E{
 					Key:   "$exists",
 					Value: true,
-				},
-				"oVal.sVal2": primitive.E{
+				}},
+				"oVal.sVal2": bson.D{primitive.E{
 					Key:   "$exists",
 					Value: false,
-				},
-				"oVal.sVal3": primitive.E{
+				}},
+				"oVal.sVal3": bson.D{primitive.E{
 					Key:   "$exists",
 					Value: false,
-				},
+				}},
 			},
 			wantErr: false,
 		},
@@ -386,10 +386,10 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[sVal1]=value1,value2,value3",
 			},
 			want: bson.M{
-				"sVal1": primitive.E{
+				"sVal1": bson.D{primitive.E{
 					Key:   "$in",
 					Value: primitive.A{"value1", "value2", "value3"},
-				},
+				}},
 			},
 			wantErr: false,
 		},
@@ -441,10 +441,10 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Options: "i",
 				},
 				"sVal4": "value",
-				"sVal5": primitive.E{
+				"sVal5": bson.D{primitive.E{
 					Key:   "$ne",
 					Value: "value",
-				},
+				}},
 				"sVal6": primitive.Regex{
 					Pattern: "^value$",
 					Options: "",
