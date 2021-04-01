@@ -12,7 +12,7 @@ import (
 
 var reWord = regexp.MustCompile(`\w+`)
 
-func detectDateComparisonOperator(field string, values []string) bson.D {
+func detectDateComparisonOperator(field string, values []string) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
@@ -28,13 +28,12 @@ func detectDateComparisonOperator(field string, values []string) bson.D {
 		}
 
 		// create a filter with the array of values...
-		filter := bson.D{primitive.E{
-			Key: field,
-			Value: primitive.E{
+		filter := bson.M{
+			field: primitive.E{
 				Key:   "$in",
 				Value: a,
 			},
-		}}
+		}
 
 		// return
 		return filter
@@ -95,25 +94,23 @@ func detectDateComparisonOperator(field string, values []string) bson.D {
 
 	// parse the date value
 	dv, _ := time.Parse(time.RFC3339, value)
-	f := primitive.E{
-		Key: field,
-	}
+	var f interface{}
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
-		f.Value = bson.D{primitive.E{
+		f = bson.D{primitive.E{
 			Key:   oper,
 			Value: dv,
 		}}
 	} else {
-		f.Value = dv
+		f = dv
 	}
 
 	// return the filter
-	return bson.D{f}
+	return bson.M{field: f}
 }
 
-func detectNumericComparisonOperator(field string, values []string, numericType string) bson.D {
+func detectNumericComparisonOperator(field string, values []string, numericType string) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
@@ -159,17 +156,13 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 			a = append(a, pv)
 		}
 
-		// create a filter with the array of values...
-		filter := bson.D{primitive.E{
-			Key: field,
-			Value: primitive.E{
+		// return a filter with the array of values...
+		return bson.M{
+			field: primitive.E{
 				Key:   "$in",
 				Value: a,
 			},
-		}}
-
-		// return
-		return filter
+		}
 	}
 
 	var oper string

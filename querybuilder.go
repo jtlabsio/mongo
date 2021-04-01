@@ -71,8 +71,8 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 // * javascriptWithScope
 // * minKey
 // * maxKey
-func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.D, error) {
-	filter := bson.D{}
+func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
+	filter := bson.M{}
 
 	if len(qo.Filter) > 0 {
 		for field, values := range qo.Filter {

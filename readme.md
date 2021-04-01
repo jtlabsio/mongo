@@ -153,7 +153,7 @@ qb := querybuilder.NewQueryBuilder("collectionName", jsonSchema, true)
 
 #### Filter
 
-The filter method returns a `bson.D{}` that can be used for excuting Find operations in Mongo.
+The filter method returns a `bson.M{}` that can be used for excuting Find operations in Mongo.
 
 ```go
 func getAllThings(w http.ResponseWriter, r *http.Request) {
