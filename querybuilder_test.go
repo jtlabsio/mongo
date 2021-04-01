@@ -129,7 +129,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 		name    string
 		fields  fields
 		args    args
-		want    bson.D
+		want    bson.M
 		wantErr bool
 	}{
 		{
@@ -142,7 +142,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "",
 			},
-			want:    bson.D{},
+			want:    bson.M{},
 			wantErr: false,
 		},
 		{
@@ -168,7 +168,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[nofield]=error",
 			},
-			want:    nil,
+			want:    bson.M{},
 			wantErr: false,
 		},
 		{
@@ -186,23 +186,11 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[doVal]=0.000000000000000000000000000000009&filter[deVal]=10.01&filter[iVal]=2147483647&filter[lVal]=9223372036854775807",
 			},
-			want: bson.D{
-				primitive.E{
-					Key:   "deVal",
-					Value: float32(10.01),
-				},
-				primitive.E{
-					Key:   "doVal",
-					Value: float64(0.000000000000000000000000000000009),
-				},
-				primitive.E{
-					Key:   "iVal",
-					Value: int32(2147483647),
-				},
-				primitive.E{
-					Key:   "lVal",
-					Value: int64(9223372036854775807),
-				},
+			want: bson.M{
+				"deVal": float32(10.01),
+				"doVal": float64(0.000000000000000000000000000000009),
+				"iVal":  int32(2147483647),
+				"lVal":  int64(9223372036854775807),
 			},
 			wantErr: false,
 		},
@@ -219,20 +207,14 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[iVal1]=1,2,3,4,5&filter[iVal2]=1.1,2.2,3.3",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "iVal1",
-					Value: primitive.E{
-						Key:   "$in",
-						Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
-					},
+			want: bson.M{
+				"iVal1": primitive.E{
+					Key:   "$in",
+					Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
 				},
-				primitive.E{
-					Key: "iVal2",
-					Value: primitive.E{
-						Key:   "$in",
-						Value: primitive.A{float32(1.1), float32(2.2), float32(3.3)},
-					},
+				"iVal2": primitive.E{
+					Key:   "$in",
+					Value: primitive.A{float32(1.1), float32(2.2), float32(3.3)},
 				},
 			},
 			wantErr: false,
@@ -253,42 +235,27 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[iVal1]=%3C4&filter[iVal2]=%3C%3D3&filter[iVal3]=%3E1&filter[iVal4]=%3E%3D2&filter[iVal5]=%21%3D5",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "iVal1",
-					Value: bson.D{primitive.E{
-						Key:   "$lt",
-						Value: int32(4),
-					}},
-				},
-				primitive.E{
-					Key: "iVal2",
-					Value: bson.D{primitive.E{
-						Key:   "$lte",
-						Value: int32(3),
-					}},
-				},
-				primitive.E{
-					Key: "iVal3",
-					Value: bson.D{primitive.E{
-						Key:   "$gt",
-						Value: int32(1),
-					}},
-				},
-				primitive.E{
-					Key: "iVal4",
-					Value: bson.D{primitive.E{
-						Key:   "$gte",
-						Value: int32(2),
-					}},
-				},
-				primitive.E{
-					Key: "iVal5",
-					Value: bson.D{primitive.E{
-						Key:   "$ne",
-						Value: int32(5),
-					}},
-				},
+			want: bson.M{
+				"iVal1": bson.D{primitive.E{
+					Key:   "$lt",
+					Value: int32(4),
+				}},
+				"iVal2": bson.D{primitive.E{
+					Key:   "$lte",
+					Value: int32(3),
+				}},
+				"iVal3": bson.D{primitive.E{
+					Key:   "$gt",
+					Value: int32(1),
+				}},
+				"iVal4": bson.D{primitive.E{
+					Key:   "$gte",
+					Value: int32(2),
+				}},
+				"iVal5": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: int32(5),
+				}},
 			},
 			wantErr: false,
 		},
@@ -305,15 +272,9 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[bVal1]=true&filter[bVal2]=false",
 			},
-			want: bson.D{
-				primitive.E{
-					Key:   "bVal1",
-					Value: true,
-				},
-				primitive.E{
-					Key:   "bVal2",
-					Value: false,
-				},
+			want: bson.M{
+				"bVal1": true,
+				"bVal2": false,
 			},
 			wantErr: false,
 		},
@@ -331,21 +292,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[dVal1]=2020-01-01T12:00:00.000Z&filter[dVal2]=2021-02-16T02:04:05.000Z&filter[dVal3]=2021-02-16T02:04:05.000Z,2020-01-01T12:00:00.000Z",
 			},
-			want: bson.D{
-				primitive.E{
-					Key:   "dVal1",
-					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
-				},
-				primitive.E{
-					Key:   "dVal2",
-					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-				},
-				primitive.E{
-					Key: "dVal3",
-					Value: primitive.E{
-						Key:   "$in",
-						Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
-					},
+			want: bson.M{
+				"dVal1": time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				"dVal2": time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				"dVal3": primitive.E{
+					Key:   "$in",
+					Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
 				},
 			},
 			wantErr: false,
@@ -366,42 +318,27 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "dVal1",
-					Value: bson.D{primitive.E{
-						Key:   "$lt",
-						Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
-					}},
-				},
-				primitive.E{
-					Key: "dVal2",
-					Value: bson.D{primitive.E{
-						Key:   "$lte",
-						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-					}},
-				},
-				primitive.E{
-					Key: "dVal3",
-					Value: bson.D{primitive.E{
-						Key:   "$gt",
-						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-					}},
-				},
-				primitive.E{
-					Key: "dVal4",
-					Value: bson.D{primitive.E{
-						Key:   "$gte",
-						Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-					}},
-				},
-				primitive.E{
-					Key: "dVal5",
-					Value: bson.D{primitive.E{
-						Key:   "$ne",
-						Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
-					}},
-				},
+			want: bson.M{
+				"dVal1": bson.D{primitive.E{
+					Key:   "$lt",
+					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				}},
+				"dVal2": bson.D{primitive.E{
+					Key:   "$lte",
+					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				}},
+				"dVal3": bson.D{primitive.E{
+					Key:   "$gt",
+					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				}},
+				"dVal4": bson.D{primitive.E{
+					Key:   "$gte",
+					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				}},
+				"dVal5": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				}},
 			},
 			wantErr: false,
 		},
@@ -420,27 +357,18 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[oVal]=sVal1,!=sVal2,-sVal3",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "oVal.sVal1",
-					Value: primitive.E{
-						Key:   "$exists",
-						Value: true,
-					},
+			want: bson.M{
+				"oVal.sVal1": primitive.E{
+					Key:   "$exists",
+					Value: true,
 				},
-				primitive.E{
-					Key: "oVal.sVal2",
-					Value: primitive.E{
-						Key:   "$exists",
-						Value: false,
-					},
+				"oVal.sVal2": primitive.E{
+					Key:   "$exists",
+					Value: false,
 				},
-				primitive.E{
-					Key: "oVal.sVal3",
-					Value: primitive.E{
-						Key:   "$exists",
-						Value: false,
-					},
+				"oVal.sVal3": primitive.E{
+					Key:   "$exists",
+					Value: false,
 				},
 			},
 			wantErr: false,
@@ -457,13 +385,10 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[sVal1]=value1,value2,value3",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "sVal1",
-					Value: primitive.E{
-						Key:   "$in",
-						Value: primitive.A{"value1", "value2", "value3"},
-					},
+			want: bson.M{
+				"sVal1": primitive.E{
+					Key:   "$in",
+					Value: primitive.A{"value1", "value2", "value3"},
 				},
 			},
 			wantErr: false,
@@ -480,11 +405,8 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[aVal1]=value1,value2,value3",
 			},
-			want: bson.D{
-				primitive.E{
-					Key:   "aVal1",
-					Value: primitive.A{"value1", "value2", "value3"},
-				},
+			want: bson.M{
+				"aVal1": primitive.A{"value1", "value2", "value3"},
 			},
 			wantErr: false,
 		},
@@ -505,45 +427,27 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			args: args{
 				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value&filter[sVal6]=\"value\"",
 			},
-			want: bson.D{
-				primitive.E{
-					Key: "sVal1",
-					Value: primitive.Regex{
-						Pattern: "value$",
-						Options: "i",
-					},
+			want: bson.M{
+				"sVal1": primitive.Regex{
+					Pattern: "value$",
+					Options: "i",
 				},
-				primitive.E{
-					Key: "sVal2",
-					Value: primitive.Regex{
-						Pattern: "^value",
-						Options: "i",
-					},
+				"sVal2": primitive.Regex{
+					Pattern: "^value",
+					Options: "i",
 				},
-				primitive.E{
-					Key: "sVal3",
-					Value: primitive.Regex{
-						Pattern: "value",
-						Options: "i",
-					},
+				"sVal3": primitive.Regex{
+					Pattern: "value",
+					Options: "i",
 				},
-				primitive.E{
-					Key:   "sVal4",
+				"sVal4": "value",
+				"sVal5": primitive.E{
+					Key:   "$ne",
 					Value: "value",
 				},
-				primitive.E{
-					Key: "sVal5",
-					Value: primitive.E{
-						Key:   "$ne",
-						Value: "value",
-					},
-				},
-				primitive.E{
-					Key: "sVal6",
-					Value: primitive.Regex{
-						Pattern: "^value$",
-						Options: "",
-					},
+				"sVal6": primitive.Regex{
+					Pattern: "^value$",
+					Options: "",
 				},
 			},
 			wantErr: false,
@@ -569,31 +473,29 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				return
 			}
 
-			// check the length of what was returned and what is expected...
-			if len(got) != len(tt.want) {
+			// check to see if it matches expectations
+			if !reflect.DeepEqual(got, tt.want) {
+				// values do not match
 				t.Errorf("QueryBuilder.Filter() = %v, want %v", got, tt.want)
 			}
 
-			// convert what was returned into a Map for lookup
-			gotMap := map[string]primitive.E{}
-			for _, e := range got {
-				gotMap[e.Key] = e
-			}
+			/*
+				// iterate through the keys of what is wanted to ensure each key value matches
+				for _, e := range tt.want {
+					if val, ok := got[e.Key]; ok {
+						val := val.(primitive.E)
+						if val.Key != e.Key || !reflect.DeepEqual(val.Value, e.Value) {
+							// values do not match
+							t.Errorf("QueryBuilder.Filter() = %v, want %v", val, e)
+						}
 
-			// iterate through the keys of what is wanted to ensure each key value matches
-			for _, e := range tt.want {
-				if val, ok := gotMap[e.Key]; ok {
-					if val.Key != e.Key || !reflect.DeepEqual(val.Value, e.Value) {
-						// values do not match
-						t.Errorf("QueryBuilder.Filter() = %v, want %v", val, e)
+						continue
 					}
 
-					continue
+					// map was missing the key...
+					t.Errorf("QueryBuilder.Filter() = missing field %v in response (%v)", e.Key, got)
 				}
-
-				// map was missing the key...
-				t.Errorf("QueryBuilder.Filter() = missing field %v in response (%v)", e.Key, got)
-			}
+				//*/
 		})
 	}
 }

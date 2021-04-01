@@ -167,9 +167,6 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 	var oper string
 	value := values[0]
-	clause := primitive.E{
-		Key: field,
-	}
 
 	// check if string value is long enough for a 2 char prefix
 	if len(value) >= 3 {
@@ -243,35 +240,35 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
+		var clause bson.D
 		if numericType == "decimal" || numericType == "double" {
-			clause.Value = bson.D{primitive.E{
+			clause = bson.D{primitive.E{
 				Key:   oper,
 				Value: parsedValue,
 			}}
 		} else {
-			clause.Value = bson.D{primitive.E{
+			clause = bson.D{primitive.E{
 				Key:   oper,
 				Value: parsedValue,
 			}}
 		}
 
 		// return with the specified operator
-		return bson.D{clause}
+		return bson.M{field: clause}
 	}
 
 	// no operator... just the value
-	clause.Value = parsedValue
-	return bson.D{clause}
+	return bson.M{field: parsedValue}
 }
 
-func detectStringComparisonOperator(field string, values []string, bsonType string) bson.D {
+func detectStringComparisonOperator(field string, values []string, bsonType string) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
 
 	// if bsonType is object, query should use an exists operator
 	if bsonType == "object" {
-		filter := bson.D{}
+		filter := bson.M{}
 
 		for _, fn := range values {
 			// check for "-" prefix on field name
@@ -290,13 +287,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			}
 
 			fn = fmt.Sprintf("%s.%s", field, fn)
-			filter = append(filter, primitive.E{
-				Key: fn,
-				Value: primitive.E{
-					Key:   "$exists",
-					Value: exists,
-				},
-			})
+			filter[fn] = primitive.E{
+				Key:   "$exists",
+				Value: exists,
+			}
 		}
 
 		return filter
@@ -313,19 +307,13 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 		// when type is an array, don't use $in operator
 		if bsonType == "array" {
-			return bson.D{primitive.E{
-				Key:   field,
-				Value: a,
-			}}
+			return bson.M{field: a}
 		}
 
 		// create a filter with the array of values using an $in operator for strings...
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.E{
-				Key:   "$in",
-				Value: a,
-			},
+		return bson.M{field: primitive.E{
+			Key:   "$in",
+			Value: a,
 		}}
 	}
 
@@ -355,67 +343,52 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 	// not equal...
 	if ne {
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.E{
-				Key:   "$ne",
-				Value: value[2:],
-			},
+		return bson.M{field: primitive.E{
+			Key:   "$ne",
+			Value: value[2:],
 		}}
 	}
 
 	// contains...
 	if c {
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.Regex{
-				Pattern: value[1 : len(value)-1],
-				Options: "i",
-			},
+		return bson.M{field: primitive.Regex{
+			Pattern: value[1 : len(value)-1],
+			Options: "i",
 		}}
 	}
 
 	// begins with...
 	if bw {
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.Regex{
-				Pattern: fmt.Sprintf("^%s", value[0:len(value)-1]),
-				Options: "i",
-			},
+		return bson.M{field: primitive.Regex{
+			Pattern: fmt.Sprintf("^%s", value[0:len(value)-1]),
+			Options: "i",
 		}}
 	}
 
 	// ends with...
 	if ew {
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.Regex{
-				Pattern: fmt.Sprintf("%s$", value[1:]),
-				Options: "i",
-			},
+		return bson.M{field: primitive.Regex{
+			Pattern: fmt.Sprintf("%s$", value[1:]),
+			Options: "i",
 		}}
 	}
 
 	// exact match...
 	if em {
-		return bson.D{primitive.E{
-			Key: field,
-			Value: primitive.Regex{
-				Pattern: fmt.Sprintf("^%s$", value[1:len(value)-1]),
-				Options: "",
-			},
+		return bson.M{field: primitive.Regex{
+			Pattern: fmt.Sprintf("^%s$", value[1:len(value)-1]),
+			Options: "",
 		}}
 	}
 
 	// the string value as is...
-	return bson.D{primitive.E{
-		Key:   field,
-		Value: value,
-	}}
+	return bson.M{field: value}
 }
 
-func combine(a bson.D, b bson.D) bson.D {
-	a = append(a, b...)
+func combine(a bson.M, b bson.M) bson.M {
+	for k, v := range b {
+		a[k] = v
+	}
+
 	return a
 }

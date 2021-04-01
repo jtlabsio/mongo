@@ -95,11 +95,8 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 			case "bool":
 				for _, value := range values {
 					bv, _ := strconv.ParseBool(value)
-					f := primitive.E{
-						Key:   field,
-						Value: bv,
-					}
-					filter = append(filter, f)
+					f := primitive.M{field: bv}
+					filter = combine(filter, f)
 				}
 			case "date":
 				f := detectDateComparisonOperator(field, values)
