@@ -1,9 +1,15 @@
 # MongoDB QueryBuilder
 
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/brozeph/mongoquerybuilder) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](http://gocover.io/_badge/github.com/brozeph/mongoquerybuilder)](http://gocover.io/github.com/brozeph/mongoquerybuilder)
+[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/github.com/jtlabsio/mongo) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](http://gocover.io/_badge/github.com/jtlabsio/mongo)](http://gocover.io/github.com/jtlabsio/mongo)
 
 
-This library exists to ease the creation of MongoDB filter and FindOptions structs when using the MongoDB driver in combination with a [JSONAPI query parser](https://github.com/brozeph/queryoptions).
+This library exists to ease the creation of MongoDB filter and FindOptions structs when using the MongoDB driver in combination with a [JSONAPI query parser](https://github.com/jtlabsio/query).
+
+## Installation
+
+```bash
+go get -u go.jtlabs.io/mongo
+```
 
 ## Usage
 
@@ -20,8 +26,8 @@ import (
 	"net/http"
 	"time"
 
-	querybuilder "github.com/brozeph/mongoquerybuilder"
-	"github.com/brozeph/queryoptions"
+	mongobuilder "go.jtlabs.io/mongo"
+	queryoptions "go.jtlabs.io/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -132,7 +138,7 @@ func main() {
 
 ### QueryBuilder
 
-A `QueryBuilder` struct can be created per MongoDB collection and will look to a [JSONSchema](https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/) defined (and often used as a validator) for the MongoDB collection to build queries and propery coerce types for parameters that are provided in a [JSON API Query Options](https://github.com/brozeph/queryoptions) object as filters.
+A `QueryBuilder` struct can be created per MongoDB collection and will look to a [JSONSchema](https://docs.mongodb.com/manual/reference/operator/query/jsonSchema/) defined (and often used as a validator) for the MongoDB collection to build queries and propery coerce types for parameters that are provided in a [JSON API Query Options](https://github.com/jtlabsio/query) object as filters.
 
 #### NewQueryBuilder
 
@@ -183,7 +189,7 @@ func getAllThings(w http.ResponseWriter, r *http.Request) {
 
 ##### Filter
 
-The `QueryOptions` (<https://github.com/brozeph/queryoptions>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
+The `QueryOptions` (<https://github.com/jtlabsio/query>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
 
 ```go
 // a query filter in a bson.M based on QueryOptions Filter values

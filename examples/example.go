@@ -10,7 +10,7 @@
 // To query the newly running example API:
 // `curl http://localhost:3080/v1/things?filter[attributes]=round`
 //
-// For more queryoptions info, see: https://github.com/brozeph/queryoptions
+// For more queryoptions info, see: https://github.com/jtlabsio/query
 //
 package main
 
@@ -22,8 +22,8 @@ import (
 	"net/http"
 	"time"
 
-	querybuilder "github.com/brozeph/mongoquerybuilder"
-	"github.com/brozeph/queryoptions"
+	mongobuilder "go.jtlabs.io/mongo"
+	queryoptions "go.jtlabs.io/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -64,7 +64,7 @@ type thing struct {
 }
 
 // create a new MongoDB QueryBuilder (with strict validation set to true)
-var builder = querybuilder.NewQueryBuilder("things", thingsSchema, true)
+var builder = mongobuilder.NewQueryBuilder("things", thingsSchema, true)
 
 //pointer for the mongo collection to query from
 var collection *mongo.Collection

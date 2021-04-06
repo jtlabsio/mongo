@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/brozeph/queryoptions"
+	options "go.jtlabs.io/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -461,9 +461,9 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				strictValidation: tt.fields.strictValidation,
 			}
 
-			qo, err := queryoptions.FromQuerystring(tt.args.qs)
+			qo, err := options.FromQuerystring(tt.args.qs)
 			if err != nil {
-				t.Errorf("QueryOptions.FromQuerystring() error = %v", err)
+				t.Errorf("options.FromQuerystring() error = %v", err)
 				return
 			}
 
