@@ -130,6 +130,8 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 	return filter, nil
 }
 
+// FindOptions creates a mongo.FindOptions struct with pagination details, sorting,
+// and field projection instructions set as specified in the query options input
 func (qb QueryBuilder) FindOptions(qo queryoptions.Options) (*options.FindOptions, error) {
 	opts := options.Find()
 
