@@ -58,6 +58,22 @@ func Test_NewQueryBuilder(t *testing.T) {
 							"bsonType":    "object",
 							"description": "child structure with no schema",
 						},
+						"childArray": bson.M{
+							"bsonType": "array",
+							"items": bson.M{
+								"bsonType": "object",
+								"properties": bson.M{
+									"field1": bson.M{
+										"bsonType":    "string",
+										"description": "sub document in array field 1",
+									},
+									"field2": bson.M{
+										"bsonType":    "string",
+										"description": "sub document in array field 2",
+									},
+								},
+							},
+						},
 						"childStructure": bson.M{
 							"bsonType": "object",
 							"required": bson.A{},
@@ -95,6 +111,9 @@ func Test_NewQueryBuilder(t *testing.T) {
 				"someName":                       "string",
 				"disabled":                       "bool",
 				"minMaxNumber":                   "int",
+				"childArray":                     "array",
+				"childArray.field1":              "string",
+				"childArray.field2":              "string",
 				"childStructureNoSchema":         "object",
 				"childStructure":                 "object",
 				"childStructure.fieldB":          "date",
@@ -478,24 +497,6 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				// values do not match
 				t.Errorf("QueryBuilder.Filter() = %v, want %v", got, tt.want)
 			}
-
-			/*
-				// iterate through the keys of what is wanted to ensure each key value matches
-				for _, e := range tt.want {
-					if val, ok := got[e.Key]; ok {
-						val := val.(primitive.E)
-						if val.Key != e.Key || !reflect.DeepEqual(val.Value, e.Value) {
-							// values do not match
-							t.Errorf("QueryBuilder.Filter() = %v, want %v", val, e)
-						}
-
-						continue
-					}
-
-					// map was missing the key...
-					t.Errorf("QueryBuilder.Filter() = missing field %v in response (%v)", e.Key, got)
-				}
-				//*/
 		})
 	}
 }
