@@ -183,6 +183,13 @@ func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M)
 					qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
 				}
 
+				if bsonType == "array" {
+					// look at "items"
+					if items, ok := value["items"]; ok {
+						value = items.(bson.M)
+					}
+				}
+
 				// handle any sub-document schema details
 				if subProperties, ok := value["properties"]; ok {
 					subProperties := subProperties.(bson.M)
