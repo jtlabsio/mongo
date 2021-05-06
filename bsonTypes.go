@@ -86,6 +86,12 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 			uv = value[1:]
 		}
 
+		// ne
+		if value[0:1] == "-" {
+			oper = "$ne"
+			uv = value[1:]
+		}
+
 		// update value to remove the prefix
 		if uv != "" {
 			value = uv
@@ -336,6 +342,15 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		bw = value[len(value)-1:] == "*"
 		ew = value[0:1] == "*"
 		c = bw && ew
+		ne = value[0:1] == "-"
+
+		// not equal...
+		if ne {
+			return bson.M{field: bson.D{primitive.E{
+				Key:   "$ne",
+				Value: value[1:],
+			}}}
+		}
 	}
 
 	// check for != or string in quotes
