@@ -216,6 +216,7 @@ For `string` bsonType fields in the schema, the following operators can be lever
 * `not equal` (i.e. `{ "name": { "$ne": "term" } }`): `?filter[name]=!=term`
 * `in` (i.e. `{ "name": { "$in": [ ... ] } }`): `?filter[name]=term1,term2,term3,term4`
 * standard comparison (i.e. `{ "name": "term" }`): `?filter[name]=term`
+* `null` is translated to `null` in the query (i.e. `{ 'name': null }`): `?filter[name]=null`
 
 *numeric bsonType*
 

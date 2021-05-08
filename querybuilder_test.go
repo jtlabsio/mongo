@@ -481,6 +481,35 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name: "should properly handle null keyword in searches",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"sVal1": "string",
+					"nVal1": "int",
+					"dVal1": "date",
+					"sVal2": "string",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[sVal1]=null&filter[nVal1]=-null&filter[dVal1]=null&filter[sVal2]=-null",
+			},
+			want: bson.M{
+				"sVal1": nil,
+				"nVal1": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: nil,
+				}},
+				"dVal1": nil,
+				"sVal2": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: nil,
+				}},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
