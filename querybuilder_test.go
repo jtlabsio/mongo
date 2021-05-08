@@ -331,11 +331,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"dVal3": "date",
 					"dVal4": "date",
 					"dVal5": "date",
+					"dVal6": "date",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z",
+				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z&filter[dVal6]=-2020-01-01T12:00:00.000Z",
 			},
 			want: bson.M{
 				"dVal1": bson.D{primitive.E{
@@ -355,6 +356,10 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
 				}},
 				"dVal5": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				}},
+				"dVal6": bson.D{primitive.E{
 					Key:   "$ne",
 					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				}},
@@ -440,11 +445,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"sVal4": "string",
 					"sVal5": "string",
 					"sVal6": "string",
+					"sVal7": "string",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value&filter[sVal6]=\"value\"",
+				qs: "filter[sVal1]=*value&filter[sVal2]=value*&filter[sVal3]=*value*&filter[sVal4]=value&filter[sVal5]=!=value&filter[sVal6]=\"value\"&filter[sVal7]=-value",
 			},
 			want: bson.M{
 				"sVal1": primitive.Regex{
@@ -468,6 +474,39 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Pattern: "^value$",
 					Options: "",
 				},
+				"sVal7": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: "value",
+				}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle null keyword in searches",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"sVal1": "string",
+					"nVal1": "int",
+					"dVal1": "date",
+					"sVal2": "string",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[sVal1]=null&filter[nVal1]=-null&filter[dVal1]=null&filter[sVal2]=-null",
+			},
+			want: bson.M{
+				"sVal1": nil,
+				"nVal1": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: nil,
+				}},
+				"dVal1": nil,
+				"sVal2": bson.D{primitive.E{
+					Key:   "$ne",
+					Value: nil,
+				}},
 			},
 			wantErr: false,
 		},

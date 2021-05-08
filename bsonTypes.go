@@ -10,7 +10,10 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var reWord = regexp.MustCompile(`\w+`)
+var (
+	reNull = regexp.MustCompile(`null`)
+	reWord = regexp.MustCompile(`\w+`)
+)
 
 func detectDateComparisonOperator(field string, values []string) bson.M {
 	if len(values) == 0 {
@@ -86,28 +89,45 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 			uv = value[1:]
 		}
 
+		// ne
+		if value[0:1] == "-" {
+			oper = "$ne"
+			uv = value[1:]
+		}
+
 		// update value to remove the prefix
 		if uv != "" {
 			value = uv
 		}
 	}
 
+	// detect usage of keyword "null"
+	if reNull.MatchString(value) {
+		// check if there is an lt, lte, gt or gte key
+		if oper != "" {
+			return bson.M{field: bson.D{primitive.E{
+				Key:   oper,
+				Value: nil,
+			}}}
+		}
+
+		// return the filter
+		return bson.M{field: nil}
+	}
+
 	// parse the date value
 	dv, _ := time.Parse(time.RFC3339, value)
-	var f interface{}
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
-		f = bson.D{primitive.E{
+		return bson.M{field: bson.D{primitive.E{
 			Key:   oper,
 			Value: dv,
-		}}
-	} else {
-		f = dv
+		}}}
 	}
 
 	// return the filter
-	return bson.M{field: f}
+	return bson.M{field: dv}
 }
 
 func detectNumericComparisonOperator(field string, values []string, numericType string) bson.M {
@@ -218,6 +238,24 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		}
 	}
 
+	if reNull.MatchString(value) {
+		// detect $ne operator (note use of - shorthand here which is not
+		// processed on numeric values that are not "null")
+		if value[0:1] == "-" || value[0:2] == "!=" {
+			oper = "$ne"
+		}
+
+		if oper != "" {
+			// return with the specified operator
+			return bson.M{field: bson.D{primitive.E{
+				Key:   oper,
+				Value: nil,
+			}}}
+		}
+
+		return bson.M{field: nil}
+	}
+
 	// parse the numeric value appropriately
 	var parsedValue interface{}
 	if numericType == "decimal" || numericType == "double" {
@@ -228,7 +266,9 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		if bitSize == 32 {
 			parsedValue = float32(v)
 		}
-	} else {
+	}
+
+	if parsedValue == nil {
 		v, _ := strconv.ParseInt(value, 0, bitSize)
 		parsedValue = v
 
@@ -240,21 +280,11 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
-		var clause bson.D
-		if numericType == "decimal" || numericType == "double" {
-			clause = bson.D{primitive.E{
-				Key:   oper,
-				Value: parsedValue,
-			}}
-		} else {
-			clause = bson.D{primitive.E{
-				Key:   oper,
-				Value: parsedValue,
-			}}
-		}
-
 		// return with the specified operator
-		return bson.M{field: clause}
+		return bson.M{field: bson.D{primitive.E{
+			Key:   oper,
+			Value: parsedValue,
+		}}}
 	}
 
 	// no operator... just the value
@@ -336,27 +366,62 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		bw = value[len(value)-1:] == "*"
 		ew = value[0:1] == "*"
 		c = bw && ew
+		ne = value[0:1] == "-"
+
+		// adjust value when not equal...
+		if ne || ew {
+			value = value[1:]
+		}
+
+		if bw {
+			value = value[0 : len(value)-1]
+		}
+
+		if c {
+			bw = false
+			ew = false
+		}
 	}
 
 	// check for != or string in quotes
-	if len(value) > 2 {
+	if len(value) > 2 && !ne {
 		ne = value[0:2] == "!="
 		em = value[0:1] == "\"" &&
 			value[len(value)-1:] == "\""
+
+		if ne {
+			value = value[2:]
+		}
+
+		if em {
+			value = value[1 : len(value)-1]
+		}
+	}
+
+	// handle null keyword
+	if reNull.MatchString(value) {
+		if ne {
+			return bson.M{field: bson.D{primitive.E{
+				Key:   "$ne",
+				Value: nil,
+			}}}
+		}
+
+		return bson.M{field: nil}
 	}
 
 	// not equal...
 	if ne {
 		return bson.M{field: bson.D{primitive.E{
 			Key:   "$ne",
-			Value: value[2:],
+			Value: value,
 		}}}
 	}
 
 	// contains...
 	if c {
 		return bson.M{field: primitive.Regex{
-			Pattern: value[1 : len(value)-1],
+			Pattern: value,
 			Options: "i",
 		}}
 	}
@@ -364,7 +429,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	// begins with...
 	if bw {
 		return bson.M{field: primitive.Regex{
-			Pattern: fmt.Sprintf("^%s", value[0:len(value)-1]),
+			Pattern: fmt.Sprintf("^%s", value),
 			Options: "i",
 		}}
 	}
@@ -372,7 +437,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	// ends with...
 	if ew {
 		return bson.M{field: primitive.Regex{
-			Pattern: fmt.Sprintf("%s$", value[1:]),
+			Pattern: fmt.Sprintf("%s$", value),
 			Options: "i",
 		}}
 	}
@@ -380,7 +445,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	// exact match...
 	if em {
 		return bson.M{field: primitive.Regex{
-			Pattern: fmt.Sprintf("^%s$", value[1:len(value)-1]),
+			Pattern: fmt.Sprintf("^%s$", value),
 			Options: "",
 		}}
 	}
