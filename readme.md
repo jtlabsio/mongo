@@ -13,7 +13,7 @@ go get -u go.jtlabs.io/mongo
 
 ## Usage
 
-Example code below translated from [examples/examples.go](examples/examples.go) - for more info, see the example file run running instructions.
+Example code below translated from [examples/example.go](examples/example.go) - for more info, see the example file run running instructions.
 
 ```go
 package main
