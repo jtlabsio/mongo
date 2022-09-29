@@ -8,7 +8,7 @@
 // `go run examples/example.go`
 //
 // To query the newly running example API:
-// `curl http://localhost:3080/v1/things?filter[attributes]=round`
+// `curl http://localhost:8080/v1/things?filter[attributes]=round`
 //
 // For more queryoptions info, see: https://github.com/jtlabsio/query
 //
