@@ -47,7 +47,7 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 // when the QueryBuilder has strict validation enabled.
 //
 // The supported bson types for filter/search are:
-// * array (strings only)
+// * array (strings only and not with $in operator)
 // * bool
 // * date
 // * decimal
@@ -184,9 +184,19 @@ func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M)
 				}
 
 				if bsonType == "array" {
-					// look at "items"
+					// look at "items" to get the bsonType
 					if items, ok := value["items"]; ok {
 						value = items.(bson.M)
+
+						// fix for issue where Array of type strings is not properly
+						// allowing filter with $in keyword
+						if bsonType, ok := value["bsonType"]; ok {
+							bsonType := bsonType.(string)
+							// capture type in the fieldTypes map
+							if bsonType != "" {
+								qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
+							}
+						}
 					}
 				}
 
@@ -205,7 +215,7 @@ func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M)
 				qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = "object"
 			}
 		default:
-			// unknown type
+			// properties are not of type bson.M
 			continue
 		}
 	}
