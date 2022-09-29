@@ -54,6 +54,9 @@ var thingsSchema = bson.M{
 			"types": bson.M{
 				"bsonType":    "array",
 				"description": "type tags for the thing",
+				"items": bson.M{
+					"bsonType": "string",
+				},
 			},
 		},
 	},
