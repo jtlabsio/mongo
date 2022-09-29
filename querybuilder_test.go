@@ -5,21 +5,32 @@ import (
 	"testing"
 	"time"
 
-	options "go.jtlabs.io/query"
+	queryoptions "go.jtlabs.io/query"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func Test_NewQueryBuilder(t *testing.T) {
 	type args struct {
-		collection string
-		schema     bson.M
+		collection       string
+		schema           bson.M
+		strictValidation []bool
 	}
 	tests := []struct {
 		name string
 		args args
 		want map[string]string
 	}{
+		{
+			name: "test with strict validation specified",
+			args: args{
+				collection:       "test",
+				schema:           bson.M{},
+				strictValidation: []bool{true},
+			},
+			want: map[string]string{},
+		},
 		{
 			name: "test with basic schema",
 			args: args{
@@ -74,6 +85,12 @@ func Test_NewQueryBuilder(t *testing.T) {
 								},
 							},
 						},
+						"childStringArray": bson.M{
+							"bsonType": "array",
+							"items": bson.M{
+								"bsonType": "string",
+							},
+						},
 						"childStructure": bson.M{
 							"bsonType": "object",
 							"required": bson.A{},
@@ -102,6 +119,10 @@ func Test_NewQueryBuilder(t *testing.T) {
 								},
 							},
 						},
+						"notAMap": bson.D{{
+							Key:   "notAMap",
+							Value: "for testing purposes",
+						}},
 					},
 				},
 			},
@@ -111,9 +132,10 @@ func Test_NewQueryBuilder(t *testing.T) {
 				"someName":                       "string",
 				"disabled":                       "bool",
 				"minMaxNumber":                   "int",
-				"childArray":                     "array",
+				"childArray":                     "object",
 				"childArray.field1":              "string",
 				"childArray.field2":              "string",
+				"childStringArray":               "string",
 				"childStructureNoSchema":         "object",
 				"childStructure":                 "object",
 				"childStructure.fieldB":          "date",
@@ -127,9 +149,22 @@ func Test_NewQueryBuilder(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			qb := NewQueryBuilder(tt.args.collection, tt.args.schema)
+			var qb *QueryBuilder
+			if len(tt.args.strictValidation) > 0 {
+				qb = NewQueryBuilder(tt.args.collection, tt.args.schema, tt.args.strictValidation...)
+			} else {
+				qb = NewQueryBuilder(tt.args.collection, tt.args.schema)
+			}
+
 			if !reflect.DeepEqual(qb.fieldTypes, tt.want) {
 				t.Errorf("NewQueryBuilder(), qb.fieldTypes = %v, want %v", qb.fieldTypes, tt.want)
+			}
+
+			if len(tt.args.strictValidation) > 0 {
+				sv := tt.args.strictValidation[0]
+				if sv != qb.strictValidation {
+					t.Errorf("NewQueryBuilder(), qb.strictValidation = %v, want %v", qb.strictValidation, sv)
+				}
 			}
 		})
 	}
@@ -367,6 +402,30 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			wantErr: false,
 		},
 		{
+			name: "should properly handle timestamp types",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"dVal1": "timestamp",
+					"dVal2": "timestamp",
+					"dVal3": "timestamp",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[dVal1]=2020-01-01T12:00:00.000Z&filter[dVal2]=2021-02-16T02:04:05.000Z&filter[dVal3]=2021-02-16T02:04:05.000Z,2020-01-01T12:00:00.000Z",
+			},
+			want: bson.M{
+				"dVal1": time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				"dVal2": time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+				"dVal3": bson.D{primitive.E{
+					Key:   "$in",
+					Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
+				}},
+			},
+			wantErr: false,
+		},
+		{
 			name: "should properly handle string type using $exists operator with object fields",
 			fields: fields{
 				collection: "test",
@@ -519,7 +578,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				strictValidation: tt.fields.strictValidation,
 			}
 
-			qo, err := options.FromQuerystring(tt.args.qs)
+			qo, err := queryoptions.FromQuerystring(tt.args.qs)
 			if err != nil {
 				t.Errorf("options.FromQuerystring() error = %v", err)
 				return
@@ -535,6 +594,239 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				// values do not match
 				t.Errorf("QueryBuilder.Filter() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestQueryBuilder_FindOptions(t *testing.T) {
+	var el int64 = 100
+
+	type fields struct {
+		collection       string
+		fieldTypes       map[string]string
+		strictValidation bool
+	}
+	type args struct {
+		qo queryoptions.Options
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    *options.FindOptions
+		wantErr bool
+	}{
+		{
+			name: "should properly determine Limit options with query options defined limit",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Page: map[string]int{
+						"limit": 100,
+					},
+				},
+			},
+			want: &options.FindOptions{
+				Limit: &el,
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine Limit options with query options defined size",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Page: map[string]int{
+						"size": 100,
+					},
+				},
+			},
+			want: &options.FindOptions{
+				Limit: &el,
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine Skip options with query options defined limit and offset",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Page: map[string]int{
+						"limit":  100,
+						"offset": 100,
+					},
+				},
+			},
+			want: &options.FindOptions{
+				Limit: &el,
+				Skip:  &el,
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine Skip options with query options defined limit and skip",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Page: map[string]int{
+						"limit": 100,
+						"skip":  100,
+					},
+				},
+			},
+			want: &options.FindOptions{
+				Limit: &el,
+				Skip:  &el,
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine Skip and Size options with query options defined page and size",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Page: map[string]int{
+						"page": 1,
+						"size": 100,
+					},
+				},
+			},
+			want: &options.FindOptions{
+				Limit: &el,
+				Skip:  &el,
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine projection fields when provided",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				// notice use of + before fieldC to validate + prefix to field name
+				qo: queryoptions.Options{
+					Fields: []string{"fieldA", "fieldB", "+fieldC"},
+				},
+			},
+			want: &options.FindOptions{
+				Projection: map[string]int{
+					"fieldA": 1,
+					"fieldB": 1,
+					"fieldC": 1,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly determine excluded fields in projection when provided",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Fields: []string{"-fieldA"},
+				},
+			},
+			want: &options.FindOptions{
+				Projection: map[string]int{
+					"fieldA": 0,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly error when providing a field in projection that does not exist and strict validation is true",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: true,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Fields: []string{"-fieldA"},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+		{
+			name: "should properly sort when sort details are provided",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: false,
+			},
+			args: args{
+				// notice the use of + and - as field prefixes below
+				qo: queryoptions.Options{
+					Sort: []string{"fieldA", "+fieldB", "-fieldC"},
+				},
+			},
+			want: &options.FindOptions{
+				Sort: map[string]int{
+					"fieldA": 1,
+					"fieldB": 1,
+					"fieldC": -1,
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly error when providing a field in sort that does not exist and strict validation is true",
+			fields: fields{
+				collection:       "test",
+				fieldTypes:       map[string]string{},
+				strictValidation: true,
+			},
+			args: args{
+				qo: queryoptions.Options{
+					Sort: []string{"-fieldA"},
+				},
+			},
+			want:    nil,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			qb := QueryBuilder{
+				collection:       tt.fields.collection,
+				fieldTypes:       tt.fields.fieldTypes,
+				strictValidation: tt.fields.strictValidation,
+			}
+			got, err := qb.FindOptions(tt.args.qo)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("QueryBuilder.FindOptions() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("QueryBuilder.FindOptions() = %v, want %v", got, tt.want)
 			}
 		})
 	}
