@@ -47,7 +47,7 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 // when the QueryBuilder has strict validation enabled.
 //
 // The supported bson types for filter/search are:
-// * array (strings only and not with $in operator)
+// * array (strings only and not with $in operator unless sub items are strings)
 // * bool
 // * date
 // * decimal
