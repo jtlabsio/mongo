@@ -89,7 +89,7 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 			}
 
 			switch bsonType {
-			case "array":
+			case "array", "object", "string":
 				f := detectStringComparisonOperator(field, values, bsonType)
 				filter = combine(filter, f)
 			case "bool":
@@ -98,30 +98,11 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 					f := primitive.M{field: bv}
 					filter = combine(filter, f)
 				}
-			case "date":
+			case "date", "timestamp":
 				f := detectDateComparisonOperator(field, values)
 				filter = combine(filter, f)
-			case "decimal":
+			case "decimal", "double", "int", "long":
 				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "double":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "int":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "long":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "object":
-				f := detectStringComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "string":
-				f := detectStringComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "timestamp":
-				// handle just like dates
-				f := detectDateComparisonOperator(field, values)
 				filter = combine(filter, f)
 			}
 		}
