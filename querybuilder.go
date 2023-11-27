@@ -99,10 +99,31 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 					filter = combine(filter, f)
 				}
 			case "date", "timestamp":
-				f := detectDateComparisonOperator(field, values)
+				var f bson.M
+				if len(values) == 1 {
+					f = detectDateComparisonOperator(field, values)
+				} else {
+					var andFx bson.A
+					for _, value := range values {
+						fx := detectDateComparisonOperator(field, []string{value})
+						andFx = append(andFx, fx)
+					}
+					f = bson.M{"$and": andFx}
+				}
+
 				filter = combine(filter, f)
 			case "decimal", "double", "int", "long":
-				f := detectNumericComparisonOperator(field, values, bsonType)
+				var f bson.M
+				if len(values) == 1 {
+					f = detectNumericComparisonOperator(field, values, bsonType)
+				} else {
+					var andFx bson.A
+					for _, value := range values {
+						fx := detectNumericComparisonOperator(field, []string{value}, bsonType)
+						andFx = append(andFx, fx)
+					}
+					f = bson.M{"$and": andFx}
+				}
 				filter = combine(filter, f)
 			}
 		}
