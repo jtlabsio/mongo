@@ -79,7 +79,7 @@ func detectComparisonOperator(value string, isTime bool) (string, string) {
 	return value, oper
 }
 
-func detectDateComparisonOperator(field string, values []string) bson.M {
+func detectDateComparisonOperator(field string, values []string, lo LogicalOperator) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
@@ -87,6 +87,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 	// if values is greater than 0, use an $in clause
 	if len(values) > 1 {
 		a := bson.A{}
+		ina := bson.A{}
 		op := false
 
 		// add each string value to the bson.A
@@ -107,13 +108,24 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 				continue
 			}
 
-			a = append(a, dv)
+			ina = append(ina, dv)
 		}
 
 		// determine type of query
 		if op {
+			// add any $in elements to the outer clause
+			if len(ina) > 0 {
+				a = append(a, bson.E{
+					Key: field,
+					Value: bson.E{
+						Key:   "$in",
+						Value: ina,
+					},
+				})
+			}
+
 			return bson.M{
-				"$and": a,
+				lo.String(): a,
 			}
 		}
 
@@ -121,7 +133,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 		return bson.M{
 			field: bson.E{
 				Key:   "$in",
-				Value: a,
+				Value: ina,
 			},
 		}
 	}
@@ -133,10 +145,10 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 	if reNull.MatchString(value) {
 		// check if there is an lt, lte, gt or gte key
 		if oper != "" {
-			return bson.M{field: bson.D{bson.E{
+			return bson.M{field: bson.E{
 				Key:   oper,
 				Value: nil,
-			}}}
+			}}
 		}
 
 		// return the filter
@@ -158,7 +170,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 	return bson.M{field: dv}
 }
 
-func detectNumericComparisonOperator(field string, values []string, numericType string) bson.M {
+func detectNumericComparisonOperator(field string, values []string, numericType string, lo LogicalOperator) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
@@ -180,6 +192,7 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 	// handle when values is an array
 	if len(values) > 1 {
 		a := bson.A{}
+		ina := bson.A{}
 		op := false
 
 		for _, value := range values {
@@ -223,13 +236,24 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 			// TODO: lots of testing required here...
 			// may need to add an operator when one isn't present
 			// because the mongo query may be incorrect otherwise
-			a = append(a, pv)
+			ina = append(ina, pv)
 		}
 
 		// determine type of query
 		if op {
+			// add any $in elements to the outer clause
+			if len(ina) > 0 {
+				a = append(a, bson.E{
+					Key: field,
+					Value: bson.E{
+						Key:   "$in",
+						Value: ina,
+					},
+				})
+			}
+
 			return bson.M{
-				"$and": a,
+				lo.String(): a,
 			}
 		}
 
@@ -237,7 +261,7 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		return bson.M{
 			field: bson.E{
 				Key:   "$in",
-				Value: a,
+				Value: ina,
 			},
 		}
 	}
