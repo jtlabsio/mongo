@@ -20,5 +20,8 @@
 ### IDE ###
 .vscode
 
+# Testing
+.mongo
+
 # Mac OS
 .DS_Store
