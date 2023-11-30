@@ -99,12 +99,12 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 			// the operator
 			if oper != "" {
 				op = true
-				a = append(a, bson.E{
+				a = append(a, bson.D{bson.E{
 					Key: field,
-					Value: bson.E{
+					Value: bson.D{bson.E{
 						Key:   oper,
 						Value: dv,
-					}})
+					}}}})
 				continue
 			}
 
@@ -115,13 +115,13 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 		if op {
 			// add any $in elements to the outer clause
 			if len(ina) > 0 {
-				a = append(a, bson.E{
+				a = append(a, bson.D{bson.E{
 					Key: field,
-					Value: bson.E{
+					Value: bson.D{bson.E{
 						Key:   "$in",
 						Value: ina,
-					},
-				})
+					}},
+				}})
 			}
 
 			return bson.M{
@@ -131,10 +131,10 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 
 		// return a filter with the array of values...
 		return bson.M{
-			field: bson.E{
+			field: bson.D{bson.E{
 				Key:   "$in",
 				Value: ina,
-			},
+			}},
 		}
 	}
 
@@ -145,10 +145,10 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 	if reNull.MatchString(value) {
 		// check if there is an lt, lte, gt or gte key
 		if oper != "" {
-			return bson.M{field: bson.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   oper,
 				Value: nil,
-			}}
+			}}}
 		}
 
 		// return the filter
@@ -160,10 +160,10 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
-		return bson.M{field: bson.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   oper,
 			Value: dv,
-		}}
+		}}}
 	}
 
 	// return the filter
@@ -223,12 +223,12 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 			// the operator
 			if oper != "" {
 				op = true
-				a = append(a, bson.E{
+				a = append(a, bson.D{bson.E{
 					Key: field,
-					Value: bson.E{
+					Value: bson.D{bson.E{
 						Key:   oper,
 						Value: pv,
-					}})
+					}}}})
 				continue
 			}
 
@@ -243,13 +243,13 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 		if op {
 			// add any $in elements to the outer clause
 			if len(ina) > 0 {
-				a = append(a, bson.E{
+				a = append(a, bson.D{bson.E{
 					Key: field,
-					Value: bson.E{
+					Value: bson.D{bson.E{
 						Key:   "$in",
 						Value: ina,
-					},
-				})
+					}},
+				}})
 			}
 
 			return bson.M{
@@ -259,10 +259,10 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 		// return a filter with the array of values...
 		return bson.M{
-			field: bson.E{
+			field: bson.D{bson.E{
 				Key:   "$in",
 				Value: ina,
-			},
+			}},
 		}
 	}
 
@@ -281,10 +281,10 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 
 		if oper != "" {
 			// return with the specified operator
-			return bson.M{field: bson.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   oper,
 				Value: nil,
-			}}
+			}}}
 		}
 
 		return bson.M{field: nil}
@@ -315,10 +315,10 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
 		// return with the specified operator
-		return bson.M{field: bson.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   oper,
 			Value: parsedValue,
-		}}
+		}}}
 	}
 
 	// no operator... just the value
@@ -351,10 +351,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			}
 
 			fn = fmt.Sprintf("%s.%s", field, fn)
-			filter[fn] = bson.E{
+			filter[fn] = bson.D{bson.E{
 				Key:   "$exists",
 				Value: exists,
-			}
+			}}
 		}
 
 		return filter
@@ -375,10 +375,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		}
 
 		// create a filter with the array of values using an $in operator for strings...
-		return bson.M{field: bson.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   "$in",
 			Value: a,
-		}}
+		}}}
 	}
 
 	// single value
@@ -435,10 +435,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	// handle null keyword
 	if reNull.MatchString(value) {
 		if ne {
-			return bson.M{field: bson.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   "$ne",
 				Value: nil,
-			}}
+			}}}
 		}
 
 		return bson.M{field: nil}
@@ -446,10 +446,10 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 	// not equal...
 	if ne {
-		return bson.M{field: bson.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   "$ne",
 			Value: value,
-		}}
+		}}}
 	}
 
 	// contains...
