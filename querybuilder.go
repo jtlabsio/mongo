@@ -71,8 +71,13 @@ func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool)
 // * javascriptWithScope
 // * minKey
 // * maxKey
-func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
+func (qb QueryBuilder) Filter(qo queryoptions.Options, o ...LogicalOperator) (bson.M, error) {
 	filter := bson.M{}
+	oper := And
+
+	if len(o) > 0 {
+		oper = o[0]
+	}
 
 	if len(qo.Filter) > 0 {
 		for field, values := range qo.Filter {
@@ -89,7 +94,7 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 			}
 
 			switch bsonType {
-			case "array":
+			case "array", "object", "string":
 				f := detectStringComparisonOperator(field, values, bsonType)
 				filter = combine(filter, f)
 			case "bool":
@@ -98,30 +103,11 @@ func (qb QueryBuilder) Filter(qo queryoptions.Options) (bson.M, error) {
 					f := primitive.M{field: bv}
 					filter = combine(filter, f)
 				}
-			case "date":
-				f := detectDateComparisonOperator(field, values)
+			case "date", "timestamp":
+				f := detectDateComparisonOperator(field, values, oper)
 				filter = combine(filter, f)
-			case "decimal":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "double":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "int":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "long":
-				f := detectNumericComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "object":
-				f := detectStringComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "string":
-				f := detectStringComparisonOperator(field, values, bsonType)
-				filter = combine(filter, f)
-			case "timestamp":
-				// handle just like dates
-				f := detectDateComparisonOperator(field, values)
+			case "decimal", "double", "int", "long":
+				f := detectNumericComparisonOperator(field, values, bsonType, oper)
 				filter = combine(filter, f)
 			}
 		}

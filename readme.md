@@ -245,6 +245,32 @@ For `date` bsonType fields in the schema (`date` and `timestamp`), any values in
 * `in` (i.e. `{ "someDate": { "$in": [ ... ] } }`): `?filter[someDate]=2021-02-16T00:00:00.000Z,2021-02-15T00:00:00.000Z`
 * standard comparison (i.e. `{ "someDate": new Date("2021-02-16T02:04:05.000Z") }`): `?filter[someDate]=2021-02-16T02:04:05.000Z`
 
+###### Logical Operators
+
+By default, when one or more query operators are provided via the search querystring, the `QueryBuilder` will construct a `$and` filter with the provided operators. For example:
+
+* `greater than equal` combined with `less than` (i.e. `{ $"and": [ { "age": { "$gte": 18, } }, { "age": { "$lt": 24, } } ] }`): `?filter[age]=>=18,<24`
+
+This behavior can be overridden by providing a LogicalOperator constant as an optional value to the `Filter` method:
+
+```go
+// a query filter in a bson.M based on QueryOptions Filter values
+f, err := builder.Filter(opt, mongobuilder.Or)
+if err != nil {
+	// this only occurs when strict schema validation is true
+	// and a field is named in the querystring that doesn't actually
+	// exist as defined in the schema... this is NOT the default
+	// behavior
+}
+```
+
+There are 4 logical operators that can be used:
+
+* `mongobuilder.And`: `$and`
+* `mongobuilder.Or`: `$or`
+* `mongobuilder.Nor`: `$nor`
+* `mongobuilder.Not`: `$not`
+
 #### FindOptions
 
 Pagination, sorting and field projection are defined in options that are provided via `QueryOptions` can be extracted in used in MongoDB Find calls using the `FindOptions` method:

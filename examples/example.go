@@ -11,7 +11,6 @@
 // `curl http://localhost:8080/v1/things?filter[attributes]=round`
 //
 // For more queryoptions info, see: https://github.com/jtlabsio/query
-//
 package main
 
 import (
@@ -69,7 +68,7 @@ type thing struct {
 // create a new MongoDB QueryBuilder (with strict validation set to true)
 var builder = mongobuilder.NewQueryBuilder("things", thingsSchema, true)
 
-//pointer for the mongo collection to query from
+// pointer for the mongo collection to query from
 var collection *mongo.Collection
 
 func getThings(w http.ResponseWriter, r *http.Request) {

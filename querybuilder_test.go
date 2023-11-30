@@ -178,6 +178,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 	}
 	type args struct {
 		qs string
+		lo []LogicalOperator
 	}
 	tests := []struct {
 		name    string
@@ -262,13 +263,13 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[iVal1]=1,2,3,4,5&filter[iVal2]=1.1,2.2,3.3",
 			},
 			want: bson.M{
-				"iVal1": bson.D{primitive.E{
+				"iVal1": bson.D{bson.E{
 					Key:   "$in",
-					Value: primitive.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
+					Value: bson.A{int32(1), int32(2), int32(3), int32(4), int32(5)},
 				}},
-				"iVal2": bson.D{primitive.E{
+				"iVal2": bson.D{bson.E{
 					Key:   "$in",
-					Value: primitive.A{float32(1.1), float32(2.2), float32(3.3)},
+					Value: bson.A{float32(1.1), float32(2.2), float32(3.3)},
 				}},
 			},
 			wantErr: false,
@@ -290,23 +291,23 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[iVal1]=%3C4&filter[iVal2]=%3C%3D3&filter[iVal3]=%3E1&filter[iVal4]=%3E%3D2&filter[iVal5]=%21%3D5",
 			},
 			want: bson.M{
-				"iVal1": bson.D{primitive.E{
+				"iVal1": bson.D{bson.E{
 					Key:   "$lt",
 					Value: int32(4),
 				}},
-				"iVal2": bson.D{primitive.E{
+				"iVal2": bson.D{bson.E{
 					Key:   "$lte",
 					Value: int32(3),
 				}},
-				"iVal3": bson.D{primitive.E{
+				"iVal3": bson.D{bson.E{
 					Key:   "$gt",
 					Value: int32(1),
 				}},
-				"iVal4": bson.D{primitive.E{
+				"iVal4": bson.D{bson.E{
 					Key:   "$gte",
 					Value: int32(2),
 				}},
-				"iVal5": bson.D{primitive.E{
+				"iVal5": bson.D{bson.E{
 					Key:   "$ne",
 					Value: int32(5),
 				}},
@@ -349,9 +350,9 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			want: bson.M{
 				"dVal1": time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				"dVal2": time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-				"dVal3": bson.D{primitive.E{
+				"dVal3": bson.D{bson.E{
 					Key:   "$in",
-					Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
+					Value: bson.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
 				}},
 			},
 			wantErr: false,
@@ -367,36 +368,41 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					"dVal4": "date",
 					"dVal5": "date",
 					"dVal6": "date",
+					"dVal7": "date",
 				},
 				strictValidation: false,
 			},
 			args: args{
-				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z&filter[dVal6]=-2020-01-01T12:00:00.000Z",
+				qs: "filter[dVal1]=<2020-01-01T12:00:00.000Z&filter[dVal2]=<=2021-02-16T02:04:05.000Z&filter[dVal3]=>2021-02-16T02:04:05.000Z&filter[dVal4]=>=2021-02-16T02:04:05.000Z&filter[dVal5]=!=2020-01-01T12:00:00.000Z&filter[dVal6]=-2020-01-01T12:00:00.000Z&filter[dVal7]=!=null",
 			},
 			want: bson.M{
-				"dVal1": bson.D{primitive.E{
+				"dVal1": bson.D{bson.E{
 					Key:   "$lt",
 					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				}},
-				"dVal2": bson.D{primitive.E{
+				"dVal2": bson.D{bson.E{
 					Key:   "$lte",
 					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
 				}},
-				"dVal3": bson.D{primitive.E{
+				"dVal3": bson.D{bson.E{
 					Key:   "$gt",
 					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
 				}},
-				"dVal4": bson.D{primitive.E{
+				"dVal4": bson.D{bson.E{
 					Key:   "$gte",
 					Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
 				}},
-				"dVal5": bson.D{primitive.E{
+				"dVal5": bson.D{bson.E{
 					Key:   "$ne",
 					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				}},
-				"dVal6": bson.D{primitive.E{
+				"dVal6": bson.D{bson.E{
 					Key:   "$ne",
 					Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+				}},
+				"dVal7": bson.D{bson.E{
+					Key:   "$ne",
+					Value: nil,
 				}},
 			},
 			wantErr: false,
@@ -418,9 +424,9 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			want: bson.M{
 				"dVal1": time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
 				"dVal2": time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
-				"dVal3": bson.D{primitive.E{
+				"dVal3": bson.D{bson.E{
 					Key:   "$in",
-					Value: primitive.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
+					Value: bson.A{time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC), time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC)},
 				}},
 			},
 			wantErr: false,
@@ -441,15 +447,15 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[oVal]=sVal1,!=sVal2,-sVal3",
 			},
 			want: bson.M{
-				"oVal.sVal1": bson.D{primitive.E{
+				"oVal.sVal1": bson.D{bson.E{
 					Key:   "$exists",
 					Value: true,
 				}},
-				"oVal.sVal2": bson.D{primitive.E{
+				"oVal.sVal2": bson.D{bson.E{
 					Key:   "$exists",
 					Value: false,
 				}},
-				"oVal.sVal3": bson.D{primitive.E{
+				"oVal.sVal3": bson.D{bson.E{
 					Key:   "$exists",
 					Value: false,
 				}},
@@ -469,9 +475,9 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[sVal1]=value1,value2,value3",
 			},
 			want: bson.M{
-				"sVal1": bson.D{primitive.E{
+				"sVal1": bson.D{bson.E{
 					Key:   "$in",
-					Value: primitive.A{"value1", "value2", "value3"},
+					Value: bson.A{"value1", "value2", "value3"},
 				}},
 			},
 			wantErr: false,
@@ -489,7 +495,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				qs: "filter[aVal1]=value1,value2,value3",
 			},
 			want: bson.M{
-				"aVal1": primitive.A{"value1", "value2", "value3"},
+				"aVal1": bson.A{"value1", "value2", "value3"},
 			},
 			wantErr: false,
 		},
@@ -525,7 +531,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Options: "i",
 				},
 				"sVal4": "value",
-				"sVal5": bson.D{primitive.E{
+				"sVal5": bson.D{bson.E{
 					Key:   "$ne",
 					Value: "value",
 				}},
@@ -533,7 +539,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 					Pattern: "^value$",
 					Options: "",
 				},
-				"sVal7": bson.D{primitive.E{
+				"sVal7": bson.D{bson.E{
 					Key:   "$ne",
 					Value: "value",
 				}},
@@ -557,15 +563,289 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			},
 			want: bson.M{
 				"sVal1": nil,
-				"nVal1": bson.D{primitive.E{
+				"nVal1": bson.D{bson.E{
 					Key:   "$ne",
 					Value: nil,
 				}},
 				"dVal1": nil,
-				"sVal2": bson.D{primitive.E{
+				"sVal2": bson.D{bson.E{
 					Key:   "$ne",
 					Value: nil,
 				}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle numeric values with comparison operators and use $and clause instead of $in",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"iVal1": "int",
+					"iVal2": "decimal",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[iVal1]=>=1,<5,!=3&filter[iVal2]=>1.1,<=2.2",
+			},
+			want: bson.M{
+				"$and": bson.A{
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$gte",
+							Value: int32(1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$lt",
+							Value: int32(5),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$ne",
+							Value: int32(3),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$gt",
+							Value: float32(1.1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$lte",
+							Value: float32(2.2),
+						}},
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle date/time values with comparison operators and use $and clause instead of $in",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"dVal1": "date",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[dVal1]=>2020-01-01T12:00:00.000Z,<=2022-01-01T12:00:00.000Z,!=2021-02-16T02:04:05.000Z",
+			},
+			want: bson.M{
+				"$and": bson.A{
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$gt",
+							Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$lte",
+							Value: time.Date(2022, time.January, 1, 12, 0, 0, 0, time.UTC),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$ne",
+							Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+						}},
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle numeric values with comparison operators and use $and clause while wrapping $in on items without comparison operator",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"iVal1": "int",
+					"iVal2": "decimal",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[iVal1]=>=1,<5,!=3,2,4&filter[iVal2]=>1.1,<=2.2,1.3,1.4,1.5",
+			},
+			want: bson.M{
+				"$and": bson.A{
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$gte",
+							Value: int32(1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$lt",
+							Value: int32(5),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$ne",
+							Value: int32(3),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key: "$in",
+							Value: bson.A{
+								int32(2),
+								int32(4),
+							},
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$gt",
+							Value: float32(1.1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$lte",
+							Value: float32(2.2),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key: "$in",
+							Value: bson.A{
+								float32(1.3),
+								float32(1.4),
+								float32(1.5),
+							},
+						}},
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle date/time values with comparison operators and use $and clause while wrapping $in on items without comparison operator",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"dVal1": "date",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[dVal1]=>2020-01-01T12:00:00.000Z,<=2022-01-01T12:00:00.000Z,!=2021-02-16T02:04:05.000Z,2021-02-16T01:01:00.000Z,2021-02-16T02:01:00.000Z",
+			},
+			want: bson.M{
+				"$and": bson.A{
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$gt",
+							Value: time.Date(2020, time.January, 1, 12, 0, 0, 0, time.UTC),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$lte",
+							Value: time.Date(2022, time.January, 1, 12, 0, 0, 0, time.UTC),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key:   "$ne",
+							Value: time.Date(2021, time.February, 16, 2, 4, 5, 0, time.UTC),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "dVal1",
+						Value: bson.D{bson.E{
+							Key: "$in",
+							Value: bson.A{
+								time.Date(2021, time.February, 16, 1, 1, 0, 0, time.UTC),
+								time.Date(2021, time.February, 16, 2, 1, 0, 0, time.UTC),
+							},
+						}},
+					}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "should properly handle numeric values with comparison operators and use $or with optional LogicalOperator",
+			fields: fields{
+				collection: "test",
+				fieldTypes: map[string]string{
+					"iVal1": "int",
+					"iVal2": "decimal",
+				},
+				strictValidation: false,
+			},
+			args: args{
+				qs: "filter[iVal1]=>=1,<5,!=3&filter[iVal2]=>1.1,<=2.2",
+				lo: []LogicalOperator{
+					Or,
+				},
+			},
+			want: bson.M{
+				"$or": bson.A{
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$gte",
+							Value: int32(1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$lt",
+							Value: int32(5),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal1",
+						Value: bson.D{bson.E{
+							Key:   "$ne",
+							Value: int32(3),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$gt",
+							Value: float32(1.1),
+						}},
+					}},
+					bson.D{bson.E{
+						Key: "iVal2",
+						Value: bson.D{bson.E{
+							Key:   "$lte",
+							Value: float32(2.2),
+						}},
+					}},
+				},
 			},
 			wantErr: false,
 		},
@@ -584,7 +864,7 @@ func TestQueryBuilder_Filter(t *testing.T) {
 				return
 			}
 
-			got, err := qb.Filter(qo)
+			got, err := qb.Filter(qo, tt.args.lo...)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("QueryBuilder.Filter() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -593,7 +873,12 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			// check to see if it matches expectations
 			if !reflect.DeepEqual(got, tt.want) {
 				// values do not match
-				t.Errorf("QueryBuilder.Filter() = %v, want %v", got, tt.want)
+				t.Errorf("QueryBuilder.Filter() = \n%v\n, want \n%v", got, tt.want)
+
+				/*
+					jsn, _ := json.MarshalIndent(got, "", "  ")
+					t.Logf("got: %s", jsn)
+					//*/
 			}
 		})
 	}

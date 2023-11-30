@@ -15,35 +15,11 @@ var (
 	reWord = regexp.MustCompile(`\w+`)
 )
 
-func detectDateComparisonOperator(field string, values []string) bson.M {
-	if len(values) == 0 {
-		return nil
+func detectComparisonOperator(value string, isTime bool) (string, string) {
+	oper := ""
+	if len(value) < 2 {
+		return value, oper
 	}
-
-	// if values is greater than 0, use an $in clause
-	if len(values) > 1 {
-		a := bson.A{}
-
-		// add each string value to the bson.A
-		for _, v := range values {
-			dv, _ := time.Parse(time.RFC3339, v)
-			a = append(a, dv)
-		}
-
-		// create a filter with the array of values...
-		filter := bson.M{
-			field: bson.D{primitive.E{
-				Key:   "$in",
-				Value: a,
-			}},
-		}
-
-		// return
-		return filter
-	}
-
-	value := values[0]
-	var oper string
 
 	// check if string value is long enough for a 2 char prefix
 	if len(value) >= 3 {
@@ -89,8 +65,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 			uv = value[1:]
 		}
 
-		// ne
-		if value[0:1] == "-" {
+		if isTime && value[0:1] == "-" {
 			oper = "$ne"
 			uv = value[1:]
 		}
@@ -101,11 +76,76 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 		}
 	}
 
+	return value, oper
+}
+
+func detectDateComparisonOperator(field string, values []string, lo LogicalOperator) bson.M {
+	if len(values) == 0 {
+		return nil
+	}
+
+	// if values is greater than 0, use an $in clause
+	if len(values) > 1 {
+		a := bson.A{}
+		ina := bson.A{}
+		op := false
+
+		// add each string value to the bson.A
+		for _, v := range values {
+			v, oper := detectComparisonOperator(v, false)
+			dv, _ := time.Parse(time.RFC3339, v)
+
+			// if there is an operator, structure the clause to include
+			// the operator
+			if oper != "" {
+				op = true
+				a = append(a, bson.D{bson.E{
+					Key: field,
+					Value: bson.D{bson.E{
+						Key:   oper,
+						Value: dv,
+					}}}})
+				continue
+			}
+
+			ina = append(ina, dv)
+		}
+
+		// determine type of query
+		if op {
+			// add any $in elements to the outer clause
+			if len(ina) > 0 {
+				a = append(a, bson.D{bson.E{
+					Key: field,
+					Value: bson.D{bson.E{
+						Key:   "$in",
+						Value: ina,
+					}},
+				}})
+			}
+
+			return bson.M{
+				lo.String(): a,
+			}
+		}
+
+		// return a filter with the array of values...
+		return bson.M{
+			field: bson.D{bson.E{
+				Key:   "$in",
+				Value: ina,
+			}},
+		}
+	}
+
+	// check for an operator in the value
+	value, oper := detectComparisonOperator(values[0], true)
+
 	// detect usage of keyword "null"
 	if reNull.MatchString(value) {
 		// check if there is an lt, lte, gt or gte key
 		if oper != "" {
-			return bson.M{field: bson.D{primitive.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   oper,
 				Value: nil,
 			}}}
@@ -120,7 +160,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
-		return bson.M{field: bson.D{primitive.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   oper,
 			Value: dv,
 		}}}
@@ -130,7 +170,7 @@ func detectDateComparisonOperator(field string, values []string) bson.M {
 	return bson.M{field: dv}
 }
 
-func detectNumericComparisonOperator(field string, values []string, numericType string) bson.M {
+func detectNumericComparisonOperator(field string, values []string, numericType string, lo LogicalOperator) bson.M {
 	if len(values) == 0 {
 		return nil
 	}
@@ -152,8 +192,12 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 	// handle when values is an array
 	if len(values) > 1 {
 		a := bson.A{}
+		ina := bson.A{}
+		op := false
 
 		for _, value := range values {
+			value, oper := detectComparisonOperator(value, false)
+
 			var pv interface{}
 			if numericType == "decimal" || numericType == "double" {
 				v, _ := strconv.ParseFloat(value, bitSize)
@@ -163,7 +207,9 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 				if bitSize == 32 {
 					pv = float32(v)
 				}
-			} else {
+			}
+
+			if pv == nil {
 				v, _ := strconv.ParseInt(value, 0, bitSize)
 				pv = v
 
@@ -173,81 +219,69 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 				}
 			}
 
-			a = append(a, pv)
+			// if there is an operator, structure the clause to include
+			// the operator
+			if oper != "" {
+				op = true
+				a = append(a, bson.D{bson.E{
+					Key: field,
+					Value: bson.D{bson.E{
+						Key:   oper,
+						Value: pv,
+					}}}})
+				continue
+			}
+
+			// otherwise, just add the item to the list
+			// TODO: lots of testing required here...
+			// may need to add an operator when one isn't present
+			// because the mongo query may be incorrect otherwise
+			ina = append(ina, pv)
+		}
+
+		// determine type of query
+		if op {
+			// add any $in elements to the outer clause
+			if len(ina) > 0 {
+				a = append(a, bson.D{bson.E{
+					Key: field,
+					Value: bson.D{bson.E{
+						Key:   "$in",
+						Value: ina,
+					}},
+				}})
+			}
+
+			return bson.M{
+				lo.String(): a,
+			}
 		}
 
 		// return a filter with the array of values...
 		return bson.M{
-			field: bson.D{primitive.E{
+			field: bson.D{bson.E{
 				Key:   "$in",
-				Value: a,
+				Value: ina,
 			}},
 		}
 	}
 
-	var oper string
-	value := values[0]
-
-	// check if string value is long enough for a 2 char prefix
-	if len(value) >= 3 {
-		var uv string
-
-		// lte
-		if value[0:2] == "<=" {
-			oper = "$lte"
-			uv = value[2:]
-		}
-
-		// gte
-		if value[0:2] == ">=" {
-			oper = "$gte"
-			uv = value[2:]
-		}
-
-		// ne
-		if value[0:2] == "!=" {
-			oper = "$ne"
-			uv = value[2:]
-		}
-
-		// update value to remove the prefix
-		if uv != "" {
-			value = uv
-		}
-	}
-
-	// check if string value is long enough for a single char prefix
-	if len(value) >= 2 {
-		var uv string
-
-		// lt
-		if value[0:1] == "<" {
-			oper = "$lt"
-			uv = value[1:]
-		}
-
-		// gt
-		if value[0:1] == ">" {
-			oper = "$gt"
-			uv = value[1:]
-		}
-
-		// update value to remove the prefix
-		if uv != "" {
-			value = uv
-		}
-	}
+	// check for an operator in the value
+	value, oper := detectComparisonOperator(values[0], false)
 
 	if reNull.MatchString(value) {
-		// detect $ne operator (note use of - shorthand here which is not
-		// processed on numeric values that are not "null")
-		if value[0:1] == "-" || value[0:2] == "!=" {
+		// aditionally detect $ne operator (note use of - shorthand here which
+		// is not processed on numeric values that are not "null")... note: this
+		// is detected here and not in the detectComparisonOperator because
+		// numeric values with a prefix of "-" have meaning that is not the same
+		// as an $ne comparison operator
+		if value[0:1] == "-" {
 			oper = "$ne"
 		}
 
 		if oper != "" {
 			// return with the specified operator
-			return bson.M{field: bson.D{primitive.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   oper,
 				Value: nil,
 			}}}
@@ -281,7 +315,7 @@ func detectNumericComparisonOperator(field string, values []string, numericType 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
 		// return with the specified operator
-		return bson.M{field: bson.D{primitive.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   oper,
 			Value: parsedValue,
 		}}}
@@ -317,7 +351,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 			}
 
 			fn = fmt.Sprintf("%s.%s", field, fn)
-			filter[fn] = bson.D{primitive.E{
+			filter[fn] = bson.D{bson.E{
 				Key:   "$exists",
 				Value: exists,
 			}}
@@ -341,7 +375,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 		}
 
 		// create a filter with the array of values using an $in operator for strings...
-		return bson.M{field: bson.D{primitive.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   "$in",
 			Value: a,
 		}}}
@@ -401,7 +435,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 	// handle null keyword
 	if reNull.MatchString(value) {
 		if ne {
-			return bson.M{field: bson.D{primitive.E{
+			return bson.M{field: bson.D{bson.E{
 				Key:   "$ne",
 				Value: nil,
 			}}}
@@ -412,7 +446,7 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 	// not equal...
 	if ne {
-		return bson.M{field: bson.D{primitive.E{
+		return bson.M{field: bson.D{bson.E{
 			Key:   "$ne",
 			Value: value,
 		}}}
@@ -456,6 +490,30 @@ func detectStringComparisonOperator(field string, values []string, bsonType stri
 
 func combine(a bson.M, b bson.M) bson.M {
 	for k, v := range b {
+		// check for existing key
+		if ev, ok := a[k]; ok {
+			// check if existing value is a bson.M
+			if evm, ok := ev.(bson.M); ok {
+				// check if new value is a bson.M
+				if vm, ok := v.(bson.M); ok {
+					// combine the two bson.M values
+					a[k] = combine(evm, vm)
+					continue
+				}
+			}
+
+			// check if existing value is a bson.A
+			if eva, ok := ev.(bson.A); ok {
+				// check if new value is a bson.A
+				if va, ok := v.(bson.A); ok {
+					// combine the two bson.A values by appending each element
+					// from the second array to the first
+					a[k] = append(eva, va...)
+					continue
+				}
+			}
+		}
+
 		a[k] = v
 	}
 
