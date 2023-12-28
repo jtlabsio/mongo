@@ -248,7 +248,7 @@ func (qb QueryBuilder) setProjectionOptions(fields []string, opts *options.FindO
 			}
 
 			// handle scenarios where the first char is a + (redundant)
-			if field[0:1] == "+" {
+			if len(field) > 0 && field[0:1] == "+" {
 				field = field[1:]
 			}
 
