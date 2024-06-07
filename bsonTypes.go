@@ -15,6 +15,18 @@ var (
 	reWord = regexp.MustCompile(`\w+`)
 )
 
+func parseUTCDate(value string) time.Time {
+	dv, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		dv, err = time.Parse("2006-01-02", value)
+		if err != nil {
+			dv, _ = time.Parse("2006/01/02", value)
+		}
+	}
+
+	return dv.UTC()
+}
+
 func detectComparisonOperator(value string, isTime bool) (string, string) {
 	oper := ""
 	if len(value) < 2 {
@@ -93,7 +105,7 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 		// add each string value to the bson.A
 		for _, v := range values {
 			v, oper := detectComparisonOperator(v, false)
-			dv, _ := time.Parse(time.RFC3339, v)
+			dv := parseUTCDate(v)
 
 			// if there is an operator, structure the clause to include
 			// the operator
@@ -156,7 +168,10 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 	}
 
 	// parse the date value
-	dv, _ := time.Parse(time.RFC3339, value)
+	dv := parseUTCDate(value)
+
+	fmt.Printf("value: %v\n", value)
+	fmt.Printf("dv: %v\n", dv)
 
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
