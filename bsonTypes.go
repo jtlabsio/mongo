@@ -170,9 +170,6 @@ func detectDateComparisonOperator(field string, values []string, lo LogicalOpera
 	// parse the date value
 	dv := parseUTCDate(value)
 
-	fmt.Printf("value: %v\n", value)
-	fmt.Printf("dv: %v\n", dv)
-
 	// check if there is an lt, lte, gt or gte key
 	if oper != "" {
 		return bson.M{field: bson.D{bson.E{
