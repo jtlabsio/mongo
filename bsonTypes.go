@@ -89,9 +89,6 @@ func parseMapSchema(schema map[string]interface{}) map[string]string {
 		return bm
 	}
 
-	jsn, _ := bson.MarshalExtJSONIndent(conv(schema), false, false, "", "  ")
-	fmt.Println(string(jsn))
-
 	return parseBSONSchema(conv(schema))
 }
 
