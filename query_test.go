@@ -1,6 +1,7 @@
 package querybuilder
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 	"time"
@@ -11,10 +12,101 @@ import (
 	options "go.mongodb.org/mongo-driver/mongo/options"
 )
 
+var testSchema = `{
+	"bsonType": "object",
+	"required": ["someID", "created", "someName"],
+	"properties": {
+		"someID": {
+			"bsonType":    "string",
+			"description": "primary identifier of something, must be unique"
+		},
+		"created": {
+			"bsonType":    "date",
+			"description": "date for when the thing was created"
+		},
+		"someName": {
+			"bsonType":    "string",
+			"description": "string name of the thing"
+		},
+		"disabled": {
+			"bsonType":    "bool",
+			"description": "boolean type"
+		},
+		"customEnum": {
+			"enum":        ["A", "B", "C"],
+			"description": "an enum type"
+		},
+		"minMaxNumber": {
+			"bsonType":    "int",
+			"minimum":     0,
+			"maximum":     100,
+			"description": "number with a min and max"
+		},
+		"childStructureNoSchema": {
+			"bsonType":    "object",
+			"description": "child structure with no schema"
+		},
+		"childArray": {
+			"bsonType": "array",
+			"items": {
+				"bsonType": "object",
+				"properties": {
+					"field1": {
+						"bsonType":    "string",
+						"description": "sub document in array field 1"
+					},
+					"field2": {
+						"bsonType":    "string",
+						"description": "sub document in array field 2"
+					}
+				}
+			}
+		},
+		"childStringArray": {
+			"bsonType": "array",
+			"items": {
+				"bsonType": "string"
+			}
+		},
+		"childStructure": {
+			"bsonType": "object",
+			"required": [],
+			"properties": {
+				"fieldA": {
+					"bsonType":    "array",
+					"description": "an array of elements"
+				},
+				"fieldB": {
+					"bsonType":    "date",
+					"description": "a nested date value"
+				},
+				"fieldC": {
+					"bsonType": "object",
+					"required": ["fieldC-1"],
+					"properties": {
+						"fieldC-1": {
+							"bsonType":    "string",
+							"description": "nested two layers deep string"
+						},
+						"fieldC-2": {
+							"bsonType":    "double",
+							"description": "a double value"
+						}
+					}
+				}
+			}
+		},
+		"notAMap": {
+			"Key":   "not properly defined in schema map",
+			"Value": "for testing purposes"
+		}
+	}
+}`
+
 func Test_NewQueryBuilder(t *testing.T) {
 	type args struct {
 		collection       string
-		schema           bson.M
+		schema           any
 		strictValidation []bool
 	}
 	tests := []struct {
@@ -32,7 +124,7 @@ func Test_NewQueryBuilder(t *testing.T) {
 			want: map[string]string{},
 		},
 		{
-			name: "test with basic schema",
+			name: "test with basic bson.M schema",
 			args: args{
 				collection: "test",
 				schema: bson.M{
@@ -146,6 +238,288 @@ func Test_NewQueryBuilder(t *testing.T) {
 				"customEnum":                     "object",
 			},
 		},
+		{
+			name: "test with basic map[string]any schema",
+			args: args{
+				collection: "test",
+				schema: map[string]any{
+					"bsonType": "object",
+					"required": []string{"someID", "created", "someName"},
+					"properties": map[string]any{
+						"someID": map[string]any{
+							"bsonType":    "string",
+							"description": "primary identifier of something, must be unique",
+						},
+						"created": map[string]any{
+							"bsonType":    "date",
+							"description": "date for when the thing was created",
+						},
+						"someName": map[string]any{
+							"bsonType":    "string",
+							"description": "string name of the thing",
+						},
+						"disabled": map[string]any{
+							"bsonType":    "bool",
+							"description": "boolean type",
+						},
+						"customEnum": map[string]any{
+							"enum":        []string{"A", "B", "C"},
+							"description": "an enum type",
+						},
+						"minMaxNumber": map[string]any{
+							"bsonType":    "int",
+							"minimum":     0,
+							"maximum":     100,
+							"description": "number with a min and max",
+						},
+						"childStructureNoSchema": map[string]any{
+							"bsonType":    "object",
+							"description": "child structure with no schema",
+						},
+						"childArray": map[string]any{
+							"bsonType": "array",
+							"items": map[string]any{
+								"bsonType": "object",
+								"properties": map[string]any{
+									"field1": map[string]any{
+										"bsonType":    "string",
+										"description": "sub document in array field 1",
+									},
+									"field2": map[string]any{
+										"bsonType":    "string",
+										"description": "sub document in array field 2",
+									},
+								},
+							},
+						},
+						"childStringArray": map[string]any{
+							"bsonType": "array",
+							"items": map[string]any{
+								"bsonType": "string",
+							},
+						},
+						"childStructure": map[string]any{
+							"bsonType": "object",
+							"required": []string{},
+							"properties": map[string]any{
+								"fieldA": map[string]any{
+									"bsonType":    "array",
+									"description": "an array of elements",
+								},
+								"fieldB": map[string]any{
+									"bsonType":    "date",
+									"description": "a nested date value",
+								},
+								"fieldC": map[string]any{
+									"bsonType": "object",
+									"required": []string{"fieldC-1"},
+									"properties": map[string]any{
+										"fieldC-1": map[string]any{
+											"bsonType":    "string",
+											"description": "nested two layers deep string",
+										},
+										"fieldC-2": map[string]any{
+											"bsonType":    "double",
+											"description": "a double value",
+										},
+									},
+								},
+							},
+						},
+						"notAMap": map[string]any{
+							"Key":   "not properly defined in schema map",
+							"Value": "for testing purposes",
+						},
+					},
+				},
+			},
+			want: map[string]string{
+				"someID":                         "string",
+				"created":                        "date",
+				"someName":                       "string",
+				"disabled":                       "bool",
+				"minMaxNumber":                   "int",
+				"childArray":                     "object",
+				"childArray.field1":              "string",
+				"childArray.field2":              "string",
+				"childStringArray":               "string",
+				"childStructureNoSchema":         "object",
+				"childStructure":                 "object",
+				"childStructure.fieldB":          "date",
+				"childStructure.fieldC":          "object",
+				"childStructure.fieldC.fieldC-1": "string",
+				"childStructure.fieldC.fieldC-2": "double",
+				"childStructure.fieldA":          "array",
+				"customEnum":                     "object",
+			},
+		},
+		{
+			name: "test with basic map[string]interface{} schema",
+			args: args{
+				collection: "test",
+				schema: map[string]interface{}{
+					"bsonType": "object",
+					"required": []string{"someID", "created", "someName"},
+					"properties": map[string]interface{}{
+						"someID": map[string]interface{}{
+							"bsonType":    "string",
+							"description": "primary identifier of something, must be unique",
+						},
+						"created": map[string]interface{}{
+							"bsonType":    "date",
+							"description": "date for when the thing was created",
+						},
+						"someName": map[string]interface{}{
+							"bsonType":    "string",
+							"description": "string name of the thing",
+						},
+						"disabled": map[string]interface{}{
+							"bsonType":    "bool",
+							"description": "boolean type",
+						},
+						"customEnum": map[string]interface{}{
+							"enum":        []string{"A", "B", "C"},
+							"description": "an enum type",
+						},
+						"minMaxNumber": map[string]interface{}{
+							"bsonType":    "int",
+							"minimum":     0,
+							"maximum":     100,
+							"description": "number with a min and max",
+						},
+						"childStructureNoSchema": map[string]interface{}{
+							"bsonType":    "object",
+							"description": "child structure with no schema",
+						},
+						"childArray": map[string]interface{}{
+							"bsonType": "array",
+							"items": map[string]interface{}{
+								"bsonType": "object",
+								"properties": map[string]interface{}{
+									"field1": map[string]interface{}{
+										"bsonType":    "string",
+										"description": "sub document in array field 1",
+									},
+									"field2": map[string]interface{}{
+										"bsonType":    "string",
+										"description": "sub document in array field 2",
+									},
+								},
+							},
+						},
+						"childStringArray": map[string]interface{}{
+							"bsonType": "array",
+							"items": map[string]interface{}{
+								"bsonType": "string",
+							},
+						},
+						"childStructure": map[string]interface{}{
+							"bsonType": "object",
+							"required": []string{},
+							"properties": map[string]interface{}{
+								"fieldA": map[string]interface{}{
+									"bsonType":    "array",
+									"description": "an array of elements",
+								},
+								"fieldB": map[string]interface{}{
+									"bsonType":    "date",
+									"description": "a nested date value",
+								},
+								"fieldC": map[string]interface{}{
+									"bsonType": "object",
+									"required": []string{"fieldC-1"},
+									"properties": map[string]interface{}{
+										"fieldC-1": map[string]interface{}{
+											"bsonType":    "string",
+											"description": "nested two layers deep string",
+										},
+										"fieldC-2": map[string]interface{}{
+											"bsonType":    "double",
+											"description": "a double value",
+										},
+									},
+								},
+							},
+						},
+						"notAMap": map[string]interface{}{
+							"Key":   "not properly defined in schema map",
+							"Value": "for testing purposes",
+						},
+					},
+				},
+			},
+			want: map[string]string{
+				"someID":                         "string",
+				"created":                        "date",
+				"someName":                       "string",
+				"disabled":                       "bool",
+				"minMaxNumber":                   "int",
+				"childArray":                     "object",
+				"childArray.field1":              "string",
+				"childArray.field2":              "string",
+				"childStringArray":               "string",
+				"childStructureNoSchema":         "object",
+				"childStructure":                 "object",
+				"childStructure.fieldB":          "date",
+				"childStructure.fieldC":          "object",
+				"childStructure.fieldC.fieldC-1": "string",
+				"childStructure.fieldC.fieldC-2": "double",
+				"childStructure.fieldA":          "array",
+				"customEnum":                     "object",
+			},
+		},
+		{
+			name: "test with basic string JSON schema",
+			args: args{
+				collection: "test",
+				schema:     testSchema,
+			},
+			want: map[string]string{
+				"someID":                         "string",
+				"created":                        "date",
+				"someName":                       "string",
+				"disabled":                       "bool",
+				"minMaxNumber":                   "int",
+				"childArray":                     "object",
+				"childArray.field1":              "string",
+				"childArray.field2":              "string",
+				"childStringArray":               "string",
+				"childStructureNoSchema":         "object",
+				"childStructure":                 "object",
+				"childStructure.fieldB":          "date",
+				"childStructure.fieldC":          "object",
+				"childStructure.fieldC.fieldC-1": "string",
+				"childStructure.fieldC.fieldC-2": "double",
+				"childStructure.fieldA":          "array",
+				"customEnum":                     "object",
+			},
+		},
+		{
+			name: "test with basic []byte JSON schema",
+			args: args{
+				collection: "test",
+				schema:     []byte(testSchema),
+			},
+			want: map[string]string{
+				"someID":                         "string",
+				"created":                        "date",
+				"someName":                       "string",
+				"disabled":                       "bool",
+				"minMaxNumber":                   "int",
+				"childArray":                     "object",
+				"childArray.field1":              "string",
+				"childArray.field2":              "string",
+				"childStringArray":               "string",
+				"childStructureNoSchema":         "object",
+				"childStructure":                 "object",
+				"childStructure.fieldB":          "date",
+				"childStructure.fieldC":          "object",
+				"childStructure.fieldC.fieldC-1": "string",
+				"childStructure.fieldC.fieldC-2": "double",
+				"childStructure.fieldA":          "array",
+				"customEnum":                     "object",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -157,7 +531,9 @@ func Test_NewQueryBuilder(t *testing.T) {
 			}
 
 			if !reflect.DeepEqual(qb.fieldTypes, tt.want) {
-				t.Errorf("NewQueryBuilder(), qb.fieldTypes = %v, want %v", qb.fieldTypes, tt.want)
+				wj, _ := json.MarshalIndent(tt.want, "", "  ")
+				qj, _ := json.MarshalIndent(qb.fieldTypes, "", "  ")
+				t.Errorf("NewQueryBuilder(), qb.fieldTypes:\n %s\nwant:\n%s", qj, wj)
 			}
 
 			if len(tt.args.strictValidation) > 0 {
@@ -874,11 +1250,6 @@ func TestQueryBuilder_Filter(t *testing.T) {
 			if !reflect.DeepEqual(got, tt.want) {
 				// values do not match
 				t.Errorf("QueryBuilder.Filter() = \n%v\n, want \n%v", got, tt.want)
-
-				/*
-					jsn, _ := json.MarshalIndent(got, "", "  ")
-					t.Logf("got: %s", jsn)
-					//*/
 			}
 		})
 	}

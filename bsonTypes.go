@@ -2,6 +2,7 @@ package querybuilder
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -14,6 +15,119 @@ var (
 	reNull = regexp.MustCompile(`null`)
 	reWord = regexp.MustCompile(`\w+`)
 )
+
+func iterateProperties(parentPrefix string, properties bson.M, ft *map[string]string) {
+	// iterate each field within properties
+	for field, value := range properties {
+		switch value := value.(type) {
+		case bson.M:
+			// retrieve the type of the field
+			if bsonType, ok := value["bsonType"]; ok {
+				bsonType := bsonType.(string)
+				// capture type in the fieldTypes map
+				if bsonType != "" {
+					(*ft)[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
+				}
+
+				if bsonType == "array" {
+					// look at "items" to get the bsonType
+					if items, ok := value["items"]; ok {
+						value = items.(bson.M)
+
+						// fix for issue where Array of type strings is not properly
+						// allowing filter with $in keyword
+						if bsonType, ok := value["bsonType"]; ok {
+							bsonType := bsonType.(string)
+							// capture type in the fieldTypes map
+							if bsonType != "" {
+								(*ft)[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
+							}
+						}
+					}
+				}
+
+				// handle any sub-document schema details
+				if subProperties, ok := value["properties"]; ok {
+					subProperties := subProperties.(bson.M)
+					iterateProperties(
+						fmt.Sprintf("%s%s.", parentPrefix, field), subProperties, ft)
+				}
+
+				continue
+			}
+
+			// check for enum (without bsonType specified)
+			if _, ok := value["enum"]; ok {
+				(*ft)[fmt.Sprintf("%s%s", parentPrefix, field)] = "object"
+			}
+		default:
+			// properties are not of type bson.M
+			continue
+		}
+	}
+}
+
+func parseMapSchema(schema map[string]interface{}) map[string]string {
+	// convert a map to a bson.M
+	var conv func(map[string]any) bson.M
+	conv = func(m map[string]any) bson.M {
+		bm := bson.M{}
+		for k, v := range m {
+			if k == "bsonType" && reflect.TypeOf(v).String() == "[]string" {
+				bm[k] = v.([]string)[0]
+				continue
+			}
+
+			if sm, ok := v.(map[string]any); ok {
+				bm[k] = conv(sm)
+				continue
+			}
+
+			bm[k] = v
+		}
+
+		return bm
+	}
+
+	jsn, _ := bson.MarshalExtJSONIndent(conv(schema), false, false, "", "  ")
+	fmt.Println(string(jsn))
+
+	return parseBSONSchema(conv(schema))
+}
+
+func parseBSONSchema(schema bson.M) map[string]string {
+	// check to see if top level is $jsonSchema
+	if js, ok := schema["$jsonSchema"]; ok {
+		schema = js.(bson.M)
+	}
+
+	// bsonType, required, properties at top level
+	// looking for properties field, specifically
+	flds := map[string]string{}
+	if properties, ok := schema["properties"]; ok {
+		properties := properties.(bson.M)
+		iterateProperties("", properties, &flds)
+	}
+
+	// return empty map
+	return flds
+}
+
+func parseJSONSchema(schema []byte) map[string]string {
+	// convert JSON to a map
+	m := map[string]any{}
+	_ = bson.UnmarshalExtJSON(schema, false, &m)
+
+	return parseMapSchema(m)
+}
+
+func parseStringSchema(schema string) map[string]string {
+	// convert JSON string to a map
+	m := map[string]any{}
+	_ = bson.UnmarshalExtJSON([]byte(schema), false, &m)
+
+	return parseMapSchema(m)
+}
 
 func parseUTCDate(value string) time.Time {
 	dv, err := time.Parse(time.RFC3339, value)

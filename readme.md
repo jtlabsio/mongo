@@ -2,7 +2,6 @@
 
 [![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/go.jtlabs.io/mongo) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](http://gocover.io/_badge/go.jtlabs.io/mongo)](http://gocover.io/go.jtlabs.io/mongo) [![GoReportCard example](https://goreportcard.com/badge/github.com/jtlabsio/mongo)](https://goreportcard.com/report/github.com/jtlabsio/mongo)
 
-
 This library exists to ease the creation of MongoDB filter and FindOptions structs when using the MongoDB driver in combination with a [JSONAPI query parser](https://github.com/jtlabsio/query).
 
 ## Installation
@@ -19,47 +18,48 @@ Example code below translated from [examples/example.go](examples/example.go) - 
 package main
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"time"
+  "context"
+  "encoding/json"
+  "fmt"
+  "log"
+  "net/http"
+  "time"
 
-	mongobuilder "go.jtlabs.io/mongo"
-	queryoptions "go.jtlabs.io/query"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+  mongobuilder "go.jtlabs.io/mongo"
+  queryoptions "go.jtlabs.io/query"
+  "go.mongodb.org/mongo-driver/bson"
+  "go.mongodb.org/mongo-driver/mongo"
+  "go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // schema for things collection (used by mongo query builder)
+// NOTE: this format is variable and can be provided as a string, []byte, or map[string]any
 var thingsSchema = bson.M{
-	"$jsonSchema": bson.M{
-		"bsonType": "object",
-		"required": []string{"thingID"},
-		"properties": bson.M{
-			"thingID": bson.M{
-				"bsonType":    "string",
-				"description": "primary identifier for the thing",
-			},
-			"created": bson.M{
-				"bsonType":    "date",
-				"description": "time at which the thing was created",
-			},
-			"name": bson.M{
-				"bsonType":    "string",
-				"description": "name of the thing",
-			},
-			"types": bson.M{
-				"bsonType":    "array",
-				"description": "type tags for the thing",
-				"items": bson.M{
-					"bsonType": "string",
-				},
-			},
-		},
-	},
+  "$jsonSchema": bson.M{
+    "bsonType": "object",
+    "required": bson.A{"thingID"},
+    "properties": bson.M{
+      "thingID": bson.M{
+        "bsonType":    "string",
+        "description": "primary identifier for the thing",
+      },
+      "created": bson.M{
+        "bsonType":    "date",
+        "description": "time at which the thing was created",
+      },
+      "name": bson.M{
+        "bsonType":    "string",
+        "description": "name of the thing",
+      },
+      "types": bson.M{
+        "bsonType":    "array",
+        "description": "type tags for the thing",
+        "items": bson.M{
+          "bsonType": "string",
+        },
+      },
+    },
+  },
 }
 
 // create a new MongoDB QueryBuilder (with strict validation set to true)
@@ -69,73 +69,73 @@ var builder = querybuilder.NewQueryBuilder("things", thingsSchema, true)
 var collection *mongo.Collection
 
 func getThings(w http.ResponseWriter, r *http.Request) {
-	opt, err := queryoptions.FromQuerystring(r.URL.RawQuery)
-	if err != nil {
-		fmt.Fprint(w, err)
-		return
-	}
+  opt, err := queryoptions.FromQuerystring(r.URL.RawQuery)
+  if err != nil {
+    fmt.Fprint(w, err)
+    return
+  }
 
-	// build a bson.M filter for the Find based on queryoptions filters
-	filter, err := builder.Filter(opt)
-	if err != nil {
-		// NOTE: will only error when strictValidation is true
-		fmt.Fprint(w, err)
-		return
-	}
+  // build a bson.M filter for the Find based on queryoptions filters
+  filter, err := builder.Filter(opt)
+  if err != nil {
+    // NOTE: will only error when strictValidation is true
+    fmt.Fprint(w, err)
+    return
+  }
 
-	// build options (pagination, sorting, field projection) based on queryoptions
-	fo, err := builder.FindOptions(opt)
-	if err != nil {
-		// NOTE: will only error when strictValidation is true
-		fmt.Fprint(w, err)
-		return
-	}
+  // build options (pagination, sorting, field projection) based on queryoptions
+  fo, err := builder.FindOptions(opt)
+  if err != nil {
+    // NOTE: will only error when strictValidation is true
+    fmt.Fprint(w, err)
+    return
+  }
 
-	// now use the filter and options in a Find call to the Mongo collection
-	cur, err := collection.Find(context.TODO(), filter, fo)
-	if err != nil {
-		fmt.Fprint(w, err)
-		return
-	}
+  // now use the filter and options in a Find call to the Mongo collection
+  cur, err := collection.Find(context.TODO(), filter, fo)
+  if err != nil {
+    fmt.Fprint(w, err)
+    return
+  }
 
-	defer cur.Close(context.TODO())
+  defer cur.Close(context.TODO())
 
-	data := []struct {
-		ThingID string    `bson:"thingID"`
-		Name    string    `bson:"name"`
-		Created time.Time `bson:"created"`
-		Types   []string  `bson:"types"`
-	}{}
-	if err = cur.All(context.TODO(), &data); err != nil {
-		fmt.Fprint(w, err)
-		return
-	}
+  data := []struct {
+    ThingID string    `bson:"thingID"`
+    Name    string    `bson:"name"`
+    Created time.Time `bson:"created"`
+    Types   []string  `bson:"types"`
+  }{}
+  if err = cur.All(context.TODO(), &data); err != nil {
+    fmt.Fprint(w, err)
+    return
+  }
 
-	re, _ := json.Marshal(data)
-	fmt.Fprint(w, string(re))
+  re, _ := json.Marshal(data)
+  fmt.Fprint(w, string(re))
 }
 
 func main() {
-	// create a MongoDB client
-	mc, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
-	if err != nil {
-		log.Fatal(err)
-	}
+  // create a MongoDB client
+  mc, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+  if err != nil {
+    log.Fatal(err)
+  }
 
-	// connect to MongoDB
-	if err := mc.Connect(context.TODO()); err != nil {
-		log.Fatal(err)
-	}
+  // connect to MongoDB
+  if err := mc.Connect(context.TODO()); err != nil {
+    log.Fatal(err)
+  }
 
-	// create a collection with the schema
-	colOpts := options.CreateCollection().SetValidator(thingsSchema)
-	mc.Database("things-db").CreateCollection(context.TODO(), "things", colOpts)
+  // create a collection with the schema
+  colOpts := options.CreateCollection().SetValidator(thingsSchema)
+  mc.Database("things-db").CreateCollection(context.TODO(), "things", colOpts)
 
-	// set the collection pointer
-	collection = mc.Database("things-db").Collection("things")
+  // set the collection pointer
+  collection = mc.Database("things-db").Collection("things")
 
-	http.HandleFunc("/v1/things", getThings)
-	log.Fatal(http.ListenAndServe(":8080", nil))
+  http.HandleFunc("/v1/things", getThings)
+  log.Fatal(http.ListenAndServe(":8080", nil))
 }
 ```
 
@@ -156,8 +156,45 @@ By default, the `QueryBuilder` does not perform strict schema validation when co
 
 ```go
 // With strict validation enabled
-jsonSchema := bson.D{ /* a JSON schema here... */ }
+jsonSchema := bson.M{ /* a JSON schema here... */ }
 qb := querybuilder.NewQueryBuilder("collectionName", jsonSchema, true)
+```
+
+##### Schemas
+
+The schema can be provided as a `bson.M`, `map[string]any`, `string`, or a `[]byte` and should be a valid JSON schema that is used to validate the collection. The schema is used to coerce types and validate the fields that are provided in the querystring.
+
+```go
+jsonSchema := map[string]any{
+ "$jsonSchema": map[string]any{
+  "bsonType": "object",
+  "required": []string{"thingID"},
+  "properties": map[string]any{
+   "thingID": map[string]any{
+    "bsonType":    "string",
+    "description": "primary identifier for the thing",
+   },
+   "created": map[string]any{
+    "bsonType":    "date",
+    "description": "time at which the thing was created",
+   },
+   "name": map[string]any{
+    "bsonType":    "string",
+    "description": "name of the thing",
+   },
+   "types": map[string]any{
+    "bsonType":    "array",
+    "description": "type tags for the thing",
+    "items": map[string]any{
+     "bsonType": "string",
+    },
+   },
+  },
+ },
+}
+
+// create a new MongoDB QueryBuilder
+var builder = querybuilder.NewQueryBuilder("things", thingsSchema)
 ```
 
 #### Filter
@@ -168,29 +205,29 @@ The filter method returns a `bson.M{}` that can be used for excuting Find operat
 func getAllThings(w http.ResponseWriter, r *http.Request) {
   // hydrate a QueryOptions index from the request
   opt, err := queryoptions.FromQuerystring(r.URL.RawQuery)
-	if err != nil {
-		fmt.Fprint(w, err)
-		return
-	}
+  if err != nil {
+    fmt.Fprint(w, err)
+    return
+  }
 
   // a query filter in a bson.M based on QueryOptions filters
-	f, _ := builder.Filter(opt)
+  f, _ := builder.Filter(opt)
 
-	// options (pagination, sorting, field projection) based on QueryOptions
-	fo, _ := builder.FindOptions(opt)
+  // options (pagination, sorting, field projection) based on QueryOptions
+  fo, _ := builder.FindOptions(opt)
 
   // now use the filter and options in a Find call to the Mongo collection
-	cur, err := collection.Find(context.TODO(), f, fo)
-	if err != nil {
-		fmt.Fprint(w, err)
-		return
-	}
+  cur, err := collection.Find(context.TODO(), f, fo)
+  if err != nil {
+    fmt.Fprint(w, err)
+    return
+  }
 
   /* do cool stuff with the cursor... */
 }
 ```
 
-##### Filter
+##### Query Options
 
 The `QueryOptions` (<https://github.com/jtlabsio/query>) package is great for parsing JSONAPI compliant `filter`, `fields`, `sort` and `page` details that are provided in the querystring of an API request. There are some nuances in the way in which filters are constructed based on the parameters.
 
@@ -209,7 +246,7 @@ if err != nil {
 
 *__note:__ to illustrate the concept for example purposes, the querystring samples shown below are not URL encoded, but should be under normal circumstances...*
 
-*string bsonType*
+####### string bsonType
 
 For `string` bsonType fields in the schema, the following operators can be leveraged with specific querystring hints:
 
@@ -221,7 +258,7 @@ For `string` bsonType fields in the schema, the following operators can be lever
 * standard comparison (i.e. `{ "name": "term" }`): `?filter[name]=term`
 * `null` is translated to `null` in the query (i.e. `{ 'name': null }`): `?filter[name]=null`
 
-*numeric bsonType*
+####### numeric bsonType
 
 For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `double`), any values provided in the querystring that are parsed by `QueryOptions` are coerced to the appropriate type when constructing the filter. Additionally, the following operators can be used in combination with querystring hints:
 
@@ -233,7 +270,7 @@ For `numeric` bsonType fields in the schema (`int`, `long`, `decimal`, and `doub
 * `in` (i.e. `{ "age": { "$in": [1,2,3,4,5] } }`): `?filter[age]=1,2,3,4,5`
 * standard comparison (i.e. `{ "age": 5 }`): `?filter[age]=5`
 
-*date bsonType*
+####### date bsonType
 
 For `date` bsonType fields in the schema (`date` and `timestamp`), any values in the querystring are converted according to `RFC3339` and used in the filter. The following operators can be used in combination with querystring hints:
 
@@ -257,10 +294,10 @@ This behavior can be overridden by providing a LogicalOperator constant as an op
 // a query filter in a bson.M based on QueryOptions Filter values
 f, err := builder.Filter(opt, mongobuilder.Or)
 if err != nil {
-	// this only occurs when strict schema validation is true
-	// and a field is named in the querystring that doesn't actually
-	// exist as defined in the schema... this is NOT the default
-	// behavior
+  // this only occurs when strict schema validation is true
+  // and a field is named in the querystring that doesn't actually
+  // exist as defined in the schema... this is NOT the default
+  // behavior
 }
 ```
 

@@ -32,7 +32,7 @@ import (
 var thingsSchema = bson.M{
 	"$jsonSchema": bson.M{
 		"bsonType": "object",
-		"required": []string{"thingID"},
+		"required": bson.A{"thingID"},
 		"properties": bson.M{
 			"thingID": bson.M{
 				"bsonType":    "string",
