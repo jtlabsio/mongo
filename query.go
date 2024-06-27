@@ -24,31 +24,8 @@ type QueryBuilder struct {
 func NewQueryBuilder(collection string, schema any, strictValidation ...bool) *QueryBuilder {
 	qb := QueryBuilder{
 		collection:       collection,
-		fieldTypes:       map[string]string{},
+		fieldTypes:       parseSchema(schema),
 		strictValidation: false,
-	}
-
-	// parse the schema
-	if schema != nil {
-		// look for a map[string]any as the schema
-		if s, ok := schema.(map[string]any); ok {
-			qb.fieldTypes = parseMapSchema(s)
-		}
-
-		// look for a bson.M as the schema
-		if s, ok := schema.(bson.M); ok {
-			qb.fieldTypes = parseBSONSchema(s)
-		}
-
-		// look for a []bit (marshalled JSON) as the schema
-		if s, ok := schema.([]byte); ok {
-			qb.fieldTypes = parseJSONSchema(s)
-		}
-
-		// look for a string (serialized JSON) as the schema
-		if s, ok := schema.(string); ok {
-			qb.fieldTypes = parseStringSchema(s)
-		}
 	}
 
 	// override strict validation if provided

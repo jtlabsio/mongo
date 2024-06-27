@@ -118,6 +118,33 @@ func parseJSONSchema(schema []byte) map[string]string {
 	return parseMapSchema(m)
 }
 
+func parseSchema(schema any) map[string]string {
+	// parse the schema
+	if schema != nil {
+		// look for a map[string]any as the schema
+		if s, ok := schema.(map[string]any); ok {
+			return parseMapSchema(s)
+		}
+
+		// look for a bson.M as the schema
+		if s, ok := schema.(bson.M); ok {
+			return parseBSONSchema(s)
+		}
+
+		// look for a []bit (marshalled JSON) as the schema
+		if s, ok := schema.([]byte); ok {
+			return parseJSONSchema(s)
+		}
+
+		// look for a string (serialized JSON) as the schema
+		if s, ok := schema.(string); ok {
+			return parseStringSchema(s)
+		}
+	}
+
+	return map[string]string{}
+}
+
 func parseStringSchema(schema string) map[string]string {
 	// convert JSON string to a map
 	m := map[string]any{}
