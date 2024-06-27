@@ -21,16 +21,11 @@ type QueryBuilder struct {
 
 // NewQueryBuilder returns a new instance of a QueryBuilder object for constructing
 // filters and options suitable for use with Mongo driver Find methods
-func NewQueryBuilder(collection string, schema bson.M, strictValidation ...bool) *QueryBuilder {
+func NewQueryBuilder(collection string, schema any, strictValidation ...bool) *QueryBuilder {
 	qb := QueryBuilder{
 		collection:       collection,
-		fieldTypes:       map[string]string{},
+		fieldTypes:       parseSchema(schema),
 		strictValidation: false,
-	}
-
-	// parse the schema
-	if schema != nil {
-		qb.discoverFields(schema)
 	}
 
 	// override strict validation if provided
@@ -135,76 +130,6 @@ func (qb QueryBuilder) FindOptions(qo queryoptions.Options) (*options.FindOption
 	}
 
 	return opts, nil
-}
-
-func (qb QueryBuilder) discoverFields(schema bson.M) {
-	// ensure fieldTypes is set
-	if qb.fieldTypes == nil {
-		qb.fieldTypes = map[string]string{}
-	}
-
-	// check to see if top level is $jsonSchema
-	if js, ok := schema["$jsonSchema"]; ok {
-		schema = js.(bson.M)
-	}
-
-	// bsonType, required, properties at top level
-	// looking for properties field, specifically
-	if properties, ok := schema["properties"]; ok {
-		properties := properties.(bson.M)
-		qb.iterateProperties("", properties)
-	}
-}
-
-func (qb QueryBuilder) iterateProperties(parentPrefix string, properties bson.M) {
-	// iterate each field within properties
-	for field, value := range properties {
-		switch value := value.(type) {
-		case bson.M:
-			// retrieve the type of the field
-			if bsonType, ok := value["bsonType"]; ok {
-				bsonType := bsonType.(string)
-				// capture type in the fieldTypes map
-				if bsonType != "" {
-					qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
-				}
-
-				if bsonType == "array" {
-					// look at "items" to get the bsonType
-					if items, ok := value["items"]; ok {
-						value = items.(bson.M)
-
-						// fix for issue where Array of type strings is not properly
-						// allowing filter with $in keyword
-						if bsonType, ok := value["bsonType"]; ok {
-							bsonType := bsonType.(string)
-							// capture type in the fieldTypes map
-							if bsonType != "" {
-								qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = bsonType
-							}
-						}
-					}
-				}
-
-				// handle any sub-document schema details
-				if subProperties, ok := value["properties"]; ok {
-					subProperties := subProperties.(bson.M)
-					qb.iterateProperties(
-						fmt.Sprintf("%s%s.", parentPrefix, field), subProperties)
-				}
-
-				continue
-			}
-
-			// check for enum (without bsonType specified)
-			if _, ok := value["enum"]; ok {
-				qb.fieldTypes[fmt.Sprintf("%s%s", parentPrefix, field)] = "object"
-			}
-		default:
-			// properties are not of type bson.M
-			continue
-		}
-	}
 }
 
 func (qb QueryBuilder) setPaginationOptions(pagination map[string]int, opts *options.FindOptions) {
