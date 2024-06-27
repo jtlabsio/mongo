@@ -1,6 +1,6 @@
 # MongoDB QueryBuilder
 
-[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/go.jtlabs.io/mongo) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](https://github.com/jtlabsio/mongo/actions/workflows/ci.yml)](https://github.com/jtlabsio/mongo/actions/workflows/ci.yml/badge.svg) [![GoReportCard example](https://goreportcard.com/badge/github.com/jtlabsio/mongo)](https://goreportcard.com/report/github.com/jtlabsio/mongo)
+[![godoc](http://img.shields.io/badge/godoc-reference-blue.svg?style=flat)](https://godoc.org/go.jtlabs.io/mongo) [![license](http://img.shields.io/badge/license-MIT-red.svg?style=flat)](https://raw.githubusercontent.com/brozeph/mongoquerybuilder/main/LICENSE) [![Coverage](https://github.com/jtlabsio/mongo/actions/workflows/ci.yml/badge.svg)](https://github.com/jtlabsio/mongo/actions/workflows/ci.yml/badge.svg) [![GoReportCard example](https://goreportcard.com/badge/github.com/jtlabsio/mongo)](https://goreportcard.com/report/github.com/jtlabsio/mongo)
 
 This library exists to ease the creation of MongoDB filter and FindOptions structs when using the MongoDB driver in combination with a [JSONAPI query parser](https://github.com/jtlabsio/query).
 
