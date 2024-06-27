@@ -1,5 +1,7 @@
 // main package is an example of how to use the querybuilder to
-// construct filters for MongoDB Find operations.
+// construct filters for MongoDB Find operations. Additionally, this
+// example demonstrates how to use the updatebuilder to construct
+// update documents for MongoDB Update operations.
 //
 // To run this example, get a running instance of Docker on 27017
 // `docker run -d --name example-mongo -p 27017:27017 mongo`
@@ -9,6 +11,9 @@
 //
 // To query the newly running example API:
 // `curl http://localhost:8080/v1/things?filter[attributes]=round`
+//
+// To update a thing:
+// `curl -X PUT -d '{"thingID":"123455","attributes":["expensive"]}' http://localhost:8080/v1/things`
 //
 // For more queryoptions info, see: https://github.com/jtlabsio/query
 package main
@@ -66,12 +71,52 @@ type thing struct {
 }
 
 // create a new MongoDB QueryBuilder (with strict validation set to true)
-var builder = mongobuilder.NewQueryBuilder("things", thingsSchema, true)
+var queryBuilder = mongobuilder.NewQueryBuilder("things", thingsSchema, true)
+
+// create a new MongoDB UpdateBuilder
+var updateBuilder = mongobuilder.NewUpdateBuilder(
+	"things",
+	thingsSchema,
+	mongobuilder.UpdateOptions().SetAddToSet("attributes", true),
+	mongobuilder.UpdateOptions().SetIgnoreFields("thingID"),
+)
 
 // pointer for the mongo collection to query from
 var collection *mongo.Collection
 
-func getThings(w http.ResponseWriter, r *http.Request) {
+func getOrSetThings(w http.ResponseWriter, r *http.Request) {
+	// update mongo if the requst is a PUT
+	if r.Method == http.MethodPut {
+		// parse the request body into a thing struct
+		var t thing
+		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+			fmt.Fprint(w, err)
+			return
+		}
+
+		// create an update document
+		ud, err := updateBuilder.Update(t)
+		if err != nil {
+			fmt.Fprint(w, err)
+			return
+		}
+
+		// update the mongo collection
+		if _, err := collection.UpdateOne(
+			context.TODO(),
+			bson.M{"thingID": t.ThingID},
+			ud,
+			&options.UpdateOptions{
+				Upsert: &[]bool{true}[0],
+			}); err != nil {
+			fmt.Fprint(w, err)
+			return
+		}
+
+		fmt.Fprint(w, "updated")
+		return
+	}
+
 	opt, err := queryoptions.FromQuerystring(r.URL.RawQuery)
 	if err != nil {
 		fmt.Fprint(w, err)
@@ -79,7 +124,7 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// build a bson.M filter for the Find based on queryoptions filters
-	filter, err := builder.Filter(opt)
+	filter, err := queryBuilder.Filter(opt)
 	if err != nil {
 		// NOTE: will only error when strictValidation is true
 		fmt.Fprint(w, err)
@@ -87,7 +132,7 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// build options (pagination, sorting, field projection) based on queryoptions
-	fo, err := builder.FindOptions(opt)
+	fo, err := queryBuilder.FindOptions(opt)
 	if err != nil {
 		// NOTE: will only error when strictValidation is true
 		fmt.Fprint(w, err)
@@ -115,13 +160,8 @@ func getThings(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	// create a MongoDB client
-	mc, err := mongo.NewClient(options.Client().ApplyURI("mongodb://localhost:27017"))
+	mc, err := mongo.Connect(context.TODO(), options.Client().ApplyURI("mongodb://localhost:27017"))
 	if err != nil {
-		log.Fatal(err)
-	}
-
-	// connect to MongoDB
-	if err := mc.Connect(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 
@@ -168,6 +208,6 @@ func main() {
 	// set the collection pointer
 	collection = mc.Database("things-db").Collection("things")
 
-	http.HandleFunc("/v1/things", getThings)
+	http.HandleFunc("/v1/things", getOrSetThings)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
