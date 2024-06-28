@@ -10,7 +10,7 @@ import (
 
 type thing struct {
 	ThingID     string    `bson:"thingID"`
-	Active      bool      `bson:"active"`
+	Active      *bool     `bson:"active"`
 	Ordinal     int       `bson:"ordinal"`
 	Name        *string   `bson:"name"`
 	TestNil     *int      `bson:"testNil"`
@@ -21,10 +21,10 @@ type thing struct {
 }
 
 type subThing struct {
-	SubThingID string    `json:"subThingID"`
-	Name       string    `json:"name"`
-	Created    time.Time `json:"created"`
-	Attributes *[]string `json:"attributes,omitempty"`
+	SubThingID string     `json:"subThingID"`
+	Name       string     `json:"name"`
+	Created    *time.Time `json:"created"`
+	Attributes *[]string  `json:"attributes,omitempty"`
 }
 
 var thingsSchema = `
@@ -160,9 +160,6 @@ func TestUpdateBuilder_Update(t *testing.T) {
 				Value: bson.D{bson.E{
 					Key:   "thingID",
 					Value: "thing",
-				}, bson.E{
-					Key:   "active",
-					Value: false,
 				}}}},
 			false,
 		},
@@ -175,7 +172,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:     "123",
-					Active:      true,
+					Active:      &[]bool{true}[0],
 					Ordinal:     100,
 					Name:        &thng,
 					NotInSchema: "not in schema",
@@ -199,7 +196,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:     "123",
-					Active:      true,
+					Active:      &[]bool{true}[0],
 					Ordinal:     100,
 					Name:        &thng,
 					NotInSchema: "not in schema",
@@ -219,7 +216,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:     "123",
-					Active:      true,
+					Active:      &[]bool{true}[0],
 					Ordinal:     100,
 					Name:        &thng,
 					NotInSchema: "not in schema",
@@ -228,7 +225,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 					SubThing: &subThing{
 						SubThingID: "456",
 						Name:       "subthing",
-						Created:    time.Now(),
+						Created:    &[]time.Time{time.Now()}[0],
 						Attributes: &[]string{"tag3", "tag4"},
 					},
 				},
@@ -280,7 +277,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID: "123",
-					Active:  true,
+					Active:  &[]bool{true}[0],
 					Created: time.Now(),
 				},
 				opts: []*updateOptions{
@@ -322,7 +319,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:     "123",
-					Active:      true,
+					Active:      &[]bool{true}[0],
 					Name:        &thng,
 					NotInSchema: "not in schema",
 					Created:     time.Now(),
@@ -352,7 +349,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:    "123",
-					Active:     true,
+					Active:     &[]bool{true}[0],
 					Attributes: []string{"tag1", "tag2"},
 				},
 				opts: []*updateOptions{
@@ -390,7 +387,7 @@ func TestUpdateBuilder_Update(t *testing.T) {
 			args{
 				doc: thing{
 					ThingID:     "123",
-					Active:      true,
+					Active:      &[]bool{true}[0],
 					Ordinal:     100,
 					Name:        &thng,
 					NotInSchema: "not in schema",
@@ -425,6 +422,32 @@ func TestUpdateBuilder_Update(t *testing.T) {
 					Key:   "attributes",
 					Value: bson.A{"tag1", "tag2"},
 				}}}},
+			false,
+		},
+		{
+			"1.7.1 - should properly handle pointers to time.Time",
+			fields{},
+			args{
+				doc: thing{
+					ThingID: "123",
+					SubThing: &subThing{
+						SubThingID: "345",
+					},
+				},
+				opts: []*updateOptions{
+					UpdateOptions().SetAddToSet("attributes", true).SetAddToSet("sub.attributes", true),
+				},
+			},
+			bson.D{bson.E{
+				Key: "$set",
+				Value: bson.D{bson.E{
+					Key:   "thingID",
+					Value: "123",
+				}, bson.E{
+					Key:   "sub.subThingID",
+					Value: "345",
+				}}},
+			},
 			false,
 		},
 	}
