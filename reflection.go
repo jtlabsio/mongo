@@ -33,8 +33,13 @@ func forEachField(val reflect.Value, pfx string, call func(string, any) error) e
 
 		// if the field is a struct, recurse into it
 		if fldV.Kind() == reflect.Struct || fldV.Kind() == reflect.Ptr && fldV.Elem().Kind() == reflect.Struct {
+			isTime := fldV.Type().String() == "time.Time"
+			if fldV.Kind() == reflect.Ptr && fldV.Elem().Type().String() == "time.Time" {
+				isTime = true
+			}
+
 			// make sure field is not a Time
-			if fldV.Type().String() != "time.Time" {
+			if !isTime {
 				if err := forEachField(fldV, nm, call); err != nil {
 					return err
 				}
@@ -77,6 +82,13 @@ func isValueEmpty(val any) bool {
 		return true
 	}
 
+	// if the value is a pointer, slice, map, function, or interface
+	// look for nil value
+	switch v.Kind() {
+	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Func, reflect.Interface:
+		return v.IsNil()
+	}
+
 	// if the value implements IsZero, return the result of that
 	type zero interface {
 		IsZero() bool
@@ -95,11 +107,6 @@ func isValueEmpty(val any) bool {
 		return v.Interface() == reflect.Zero(v.Type()).Interface()
 	}
 
-	// if the value is a pointer, slice, map, function, or interface
-	switch v.Kind() {
-	case reflect.Ptr, reflect.Slice, reflect.Map, reflect.Func, reflect.Interface:
-		return v.IsNil()
-	default:
-		return false
-	}
+	// if we got this far, there must be a value
+	return false
 }
