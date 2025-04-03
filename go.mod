@@ -1,10 +1,11 @@
-module go.jtlabs.io/mongo
+module go.jtlabs.io/mongo/v2
 
 go 1.22
 
 toolchain go1.22.2
 
 require (
+	go.jtlabs.io/mongo v1.7.1
 	go.jtlabs.io/query v1.6.1
 	go.mongodb.org/mongo-driver v1.15.1
 )

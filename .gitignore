@@ -25,3 +25,5 @@
 
 # Mac OS
 .DS_Store
+
+coverage*
